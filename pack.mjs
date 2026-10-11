@@ -11,7 +11,7 @@ import path from 'node:path';
 const root = path.dirname(fileURLToPath(import.meta.url));
 process.chdir(root);
 
-const INCLUDE = ['manifest.json', 'background', 'lib', 'pages', 'popup', 'styles', 'icons'];
+const INCLUDE = ['manifest.json', 'background', 'lib', 'pages', 'popup', 'styles', 'icons', 'content-scripts'];
 const stageName = 'local-history-extension';
 const { version } = JSON.parse(readFileSync('manifest.json', 'utf8'));
 

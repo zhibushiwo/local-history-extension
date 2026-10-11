@@ -19,6 +19,19 @@ import { createDwellController } from '../lib/dwell.js';
 // ─────────────────────────────────────────────────────────────
 const DWELL_ALARM = 'dwell-flush';
 
+// 媒体播放状态（content script 上报）：tabId -> 最近一次"正在播放"的时间。
+// 内存态即可：SW 重启后 content script 的 ~30s 心跳会自动补上。
+const mediaPlayingAt = new Map();
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg && msg.type === 'MEDIA_STATE' && sender.tab) {
+    if (msg.playing) mediaPlayingAt.set(sender.tab.id, Date.now());
+    else mediaPlayingAt.delete(sender.tab.id);
+    // 播放状态变化立即重估（视频开播/暂停都影响该不该计时）
+    dwell.refresh(Date.now());
+  }
+});
+
 const dwell = createDwellController({
   session: chrome.storage.session,
   getSettings,
@@ -67,6 +80,10 @@ const dwell = createDwellController({
         windowFocused,
         windowState,
         audible: !!tab.audible, // 正在出声（视频/音频）：空闲判定豁免
+        // 页面 <video>/<audio> 正在播放（content script 上报，45s 内视为有效）：
+        // 比 tab.audible 可靠——静音播放/静音间隙也能覆盖
+        mediaPlaying:
+          Date.now() - (mediaPlayingAt.get(tab.id) || 0) < 45000,
       };
     } catch (e) {
       return null;
@@ -96,6 +113,7 @@ chrome.windows.onFocusChanged.addListener(() => dwell.refresh(Date.now()));
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   clearTabState(tabId);
+  mediaPlayingAt.delete(tabId);
   dwell.refresh(Date.now());
 });
 

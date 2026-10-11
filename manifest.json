@@ -16,6 +16,23 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.bilibili.com/*",
+        "*://*.youtube.com/*",
+        "*://v.qq.com/*",
+        "*://*.iqiyi.com/*",
+        "*://*.youku.com/*",
+        "*://*.douyin.com/*",
+        "*://*.ixigua.com/*"
+      ],
+      "js": ["content-scripts/media-watcher.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "打开我的历史记录",
     "default_popup": "popup/popup.html",

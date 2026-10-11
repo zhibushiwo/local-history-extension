@@ -247,5 +247,21 @@ console.log('controller:');
   eq(m.alarmOn, true, '停表后 alarm 保留（看门狗）');
 }
 
+{
+  // 媒体播放（content script 检测 video/audio）与出声同权：idle 豁免
+  const { deps, dwellWrites } = makeDeps({
+    settings: { recordDwell: true, idleThresholdSec: 60 },
+    context: { ...CTX, audible: false, mediaPlaying: true },
+    idleState: 'idle',
+    records: { 'a.com/x': REC },
+  });
+  const c = createDwellController(deps);
+  await c.loadSettings();
+  const t0 = new Date(2026, 9, 11, 10, 0, 0).getTime();
+  await c.refresh(t0);
+  await c.refresh(t0 + 60000); // 静音视频在播：idle 照样计时
+  eq(dwellWrites[0].seconds, 60, '媒体在播（静音）idle 豁免生效');
+}
+
 console.log(failed === 0 ? '全部通过' : `${failed} 个用例失败`);
 process.exit(failed === 0 ? 0 : 1);
