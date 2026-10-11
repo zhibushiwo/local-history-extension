@@ -1752,6 +1752,22 @@ body.incognito-mode .normal-only {
   margin-bottom: 16px;
 }
 
+/* 通栏三等分：作为面板的结构分隔，而不是悬浮的小胶囊 */
+.stats-tabs-row .segmented {
+  display: flex;
+  width: 100%;
+}
+
+.stats-tabs-row .segmented button {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.stats-tabs-row .segmented button.active {
+  font-weight: 600;
+}
+
 .stats-tab-group[hidden] {
   display: none;
 }
