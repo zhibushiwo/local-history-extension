@@ -716,7 +716,7 @@ function renderDwellCard(records) {
 function renderSearchBehavior(records) {
   const acc = createSearchAccumulator();
   records.forEach(r => acc.add(r));
-  const { total, topKeywords } = acc.result();
+  const { total, engineTotals, topKeywords } = acc.result();
 
   // 日均分母：当前范围内首尾记录的跨度天数
   let first = Infinity;
@@ -734,6 +734,13 @@ function renderSearchBehavior(records) {
     total.toLocaleString();
   document.getElementById('kpi-search-avg').textContent = (total / days).toFixed(1);
 
+  // 引擎分布 chips
+  const chipBox = document.getElementById('stat-search-engines');
+  chipBox.hidden = engineTotals.length === 0;
+  chipBox.innerHTML = engineTotals
+    .map(([engine, count]) => `<span class="engine-chip">${escapeHtml(engine)} ${count}</span>`)
+    .join('');
+
   const box = document.getElementById('stat-search-kw');
   const rows = topKeywords.slice(0, 12);
   if (rows.length === 0) {
@@ -745,7 +752,9 @@ function renderSearchBehavior(records) {
       (r, i) => `
       <div class="kw-row">
         <span class="kw-rank">${i + 1}</span>
-        <span class="kw-text" title="${escapeHtml(r.query)}">${escapeHtml(r.query)}</span>
+        <span class="kw-text"><span class="kw-q" title="${escapeHtml(r.query)}">${escapeHtml(r.query)}</span><span class="kw-engines">${r.engines
+            .map(([engine, count]) => `<i title="${escapeHtml(engine)} ${count} 次">${escapeHtml(engine)}${count > 1 ? ' ' + count : ''}</i>`)
+            .join('')}</span></span>
         <span class="kw-count">${r.count}</span>
       </div>`,
     )
@@ -832,6 +841,35 @@ document.addEventListener('click', e => {
 });
 window.addEventListener('resize', closeAliasPop);
 
+// ==================== 统计：分组 Tab（趋势 / Top 榜 / 分布） ====================
+let statsTab = 'trend';
+
+function applyStatsTab() {
+  for (const key of ['trend', 'top', 'dist']) {
+    const el = document.getElementById('stats-tab-' + key);
+    if (el) el.hidden = key !== statsTab;
+  }
+  document
+    .querySelectorAll('#stats-tabs button[data-tab]')
+    .forEach(b => b.classList.toggle('active', b.dataset.tab === statsTab));
+}
+
+function setStatsTab(tab) {
+  statsTab = tab;
+  applyStatsTab();
+  // 切回趋势 tab 时重绘画布图（隐藏的 canvas 无尺寸，绘制会被跳过）
+  if (tab === 'trend' && lastStats) {
+    renderCalendarHeatmap(lastStats.allRecords);
+    renderTrendChart(lastStats.records, lastStats.trendDays);
+    renderDwellTrend(lastStats.records, lastStats.trendDays);
+  }
+}
+
+document.getElementById('stats-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if (btn) setStatsTab(btn.dataset.tab);
+});
+
 // ==================== 统计：总入口 ====================
 function renderStats(records, allRecords, trendDays, siteNames) {
   lastStats = { records, allRecords, trendDays, siteNames };
@@ -851,6 +889,7 @@ function renderStats(records, allRecords, trendDays, siteNames) {
   renderDwellCard(records);
   render24hAndWeekday(records);
   renderSearchBehavior(records);
+  applyStatsTab();
 }
 
 // ==================== 交互绑定 ====================

@@ -141,6 +141,15 @@
 
   <div class="stats-comparison" id="stat-comparison"></div>
 
+  <div class="stats-tabs-row">
+    <div class="segmented" id="stats-tabs">
+      <button type="button" data-tab="trend" class="active">趋势</button>
+      <button type="button" data-tab="top">Top 榜</button>
+      <button type="button" data-tab="dist">分布</button>
+    </div>
+  </div>
+
+  <div id="stats-tab-trend" class="stats-tab-group">
   <div class="stats-section">
     <div class="stats-title-row">
       <h3 class="stats-title">活跃热力图</h3>
@@ -187,12 +196,9 @@
     </div>
     <p class="chart-note">仅统计前台聚焦且窗口可见的标签页；系统空闲即停（长视频/长文阅读会偏低）。</p>
   </div>
-
-  <div class="stats-section">
-    <h3 class="stats-title">时段热力图（星期 × 小时）</h3>
-    <div id="stat-hour-heatmap" class="hour-heatmap"></div>
   </div>
 
+  <div id="stats-tab-top" class="stats-tab-group" hidden>
   <div class="stats-section">
     <h3 class="stats-title">访问最多的页面 Top 10</h3>
     <div id="stat-top-pages" class="stat-top-list"></div>
@@ -214,6 +220,13 @@
     <p class="chart-note-hint">右键站点行可修改显示名</p>
     <div id="stat-top-dwell" class="stat-top-list"></div>
   </div>
+  </div>
+
+  <div id="stats-tab-dist" class="stats-tab-group" hidden>
+  <div class="stats-section">
+    <h3 class="stats-title">时段热力图（星期 × 小时）</h3>
+    <div id="stat-hour-heatmap" class="hour-heatmap"></div>
+  </div>
 
   <div class="stats-section">
     <h3 class="stats-title">24 小时访问分布</h3>
@@ -231,8 +244,10 @@
       <div><span class="search-kpi-value" id="kpi-search-total">-</span><span class="search-kpi-label">搜索次数</span></div>
       <div><span class="search-kpi-value" id="kpi-search-avg">-</span><span class="search-kpi-label">日均搜索</span></div>
     </div>
+    <div class="engine-chips" id="stat-search-engines" hidden></div>
     <div id="stat-search-kw" class="kw-list"></div>
     <p class="chart-note">关键词从搜索结果页 URL 解析（Bing / Google / 百度 / 搜狗 / DuckDuckGo，含 B站 / 掘金 / GitHub 站内搜索）；同一关键词 10 分钟内的翻页或二次筛选只算一次。</p>
+  </div>
   </div>
 
 </section>
