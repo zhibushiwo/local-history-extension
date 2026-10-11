@@ -155,5 +155,5 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('我的历史记录 v2.1 已安装/更新（模块化 · 暖色 UI · 统计增强）');
+  console.log('我的历史记录 v2.2 已安装/更新（暖色 UI · 统计增强 · 视频播放计时）');
 });

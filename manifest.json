@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "我的历史记录",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "独立存储的浏览历史，按年分库，支持跨年查询、导入导出、永久保存。",
   "permissions": [
     "tabs",
