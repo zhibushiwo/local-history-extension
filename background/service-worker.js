@@ -4,22 +4,25 @@ import * as MyHistoryDB from '../lib/db.js';
 import {
   handleTabUpdated,
   clearTabState,
-  normalizeUrl,
   locateRecord,
 } from '../lib/recorder.js';
 import { getSettings } from '../lib/settings.js';
-import { createDwellController } from '../lib/dwell.js';
+import {
+  createDwellController,
+  collectDwellTargets,
+  MEDIA_PLAYING_TTL_MS,
+} from '../lib/dwell.js';
 
 // ─────────────────────────────────────────────────────────────
-// 停留时长采集
-// MV3 的 SW 静默约 30s 被回收 → 计时期间挂 1 分钟心跳 alarm（alarm 能唤醒 SW），
-// 长会话按分钟增量落库不丢失；合盖睡眠产生的超长区间按增量上限截断丢弃，
-// 绝不按墙钟时间补算（否则合盖 8 小时会被记成 2 小时浏览）。
+// 停留时长采集（多目标）：每个普通窗口的活动标签都是候选，
+// 控制器按 shouldCount 逐个决定是否计时——分屏/副屏多个视频并发计时。
+// 媒体播放信号由 content script 按帧上报（tabId:frameId 隔离，
+// 广告 iframe 的 false 不会清掉主播放器状态）。
 // 设计细节见 lib/dwell.js 头注释。
 // ─────────────────────────────────────────────────────────────
 const DWELL_ALARM = 'dwell-flush';
 
-// 媒体播放状态（content script 上报）：tabId -> 最近一次"正在播放"的时间。
+// 按帧媒体状态：`${tabId}:${frameId}` -> 最近一次"正在播放"的时间。
 // 内存态即可：SW 重启后 content script 的心跳会自动补上。
 const mediaPlayingAt = new Map();
 
@@ -35,49 +38,17 @@ const dwell = createDwellController({
   addDwellTime: (storeName, recordId, seconds, dayKey) =>
     MyHistoryDB.addDwellTime(storeName, recordId, seconds, dayKey),
   locateRecord,
-  async syncAlarm(active) {
-    // 心跳只在计时期间存在；alarm 在 SW 终止后依然存活，自愈式增删
+  log: (...args) => console.warn('[dwell]', ...args),
+  async getDwellTargets(now) {
     try {
-      const exists = await new Promise((resolve) => {
-        try {
-          chrome.alarms.get(DWELL_ALARM, (a) => resolve(!!a));
-        } catch (e) {
-          resolve(false);
-        }
-      });
-      if (active && !exists) chrome.alarms.create(DWELL_ALARM, { periodInMinutes: 1 });
-      else if (!active && exists) chrome.alarms.clear(DWELL_ALARM);
-    } catch (e) {}
-  },
-  async getActiveContext() {
-    try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        lastFocusedWindow: true,
-      });
-      if (!tab || !tab.url) return null;
-      let windowState = 'normal';
-      let windowFocused = false;
-      try {
-        const win = await chrome.windows.get(tab.windowId);
-        windowState = win.state;
-        windowFocused = !!win.focused;
-      } catch (e) {}
-      return {
-        tabId: tab.id,
-        url: tab.url,
-        normalized: normalizeUrl(tab.url),
-        incognito: !!tab.incognito,
-        windowFocused,
-        windowState,
-        audible: !!tab.audible, // 正在出声（视频/音频）：空闲判定豁免
-        // 页面 <video>/<audio> 正在播放（content script 上报，45s 内视为有效）：
-        // 比 tab.audible 可靠——静音播放/静音间隙也能覆盖
-        mediaPlaying:
-          Date.now() - (mediaPlayingAt.get(tab.id) || 0) < 45000,
-      };
+      const wins = await chrome.windows.getAll({ populate: true });
+      const playing = new Set();
+      for (const [k, ts] of mediaPlayingAt) {
+        if (now - ts < MEDIA_PLAYING_TTL_MS) playing.add(Number(k.split(':')[0]));
+      }
+      return collectDwellTargets(wins, playing);
     } catch (e) {
-      return null;
+      return []; // 枚举失败退化为不计时
     }
   },
   getIdleState(thresholdSec) {
@@ -90,30 +61,29 @@ const dwell = createDwellController({
       }
     });
   },
-  log: (...args) => console.warn('[dwell]', ...args),
 });
 
-// 播放状态变化立即重估（视频开播/暂停都影响该不该计时）。
-// 注册在 dwell 创建之后，避免冷启动时消息早于模块求值完成。
-chrome.runtime.onMessage.addListener((msg, sender) => {
-  if (msg && msg.type === 'MEDIA_STATE' && sender.tab) {
-    const had = mediaPlayingAt.has(sender.tab.id);
-    if (msg.playing) {
-      mediaPlayingAt.set(sender.tab.id, Date.now());
-      if (!had) console.debug('[dwell] media playing start, tab', sender.tab.id);
-    } else {
-      mediaPlayingAt.delete(sender.tab.id);
-      if (had) console.debug('[dwell] media playing stop, tab', sender.tab.id);
-    }
-    dwell.refresh(Date.now(), 'media-state');
-  }
-});
-
-// 冷启动初始化：重设空闲阈值 + 以当前时间重建基线（不按历史时间戳补算）
+// 冷启动初始化：重设空闲阈值 + settle-all 后按当前 targets 重建（不按历史补算）
 dwell
   .loadSettings()
   .then(() => dwell.refresh(Date.now(), 'startup'))
   .catch(() => {});
+
+// 媒体消息监听放在 dwell 创建之后（消息可能早于模块求值完成到达，避免 TDZ）
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg && msg.type === 'MEDIA_STATE' && sender.tab) {
+    const key = sender.tab.id + ':' + sender.frameId;
+    const had = mediaPlayingAt.has(key);
+    if (msg.playing) {
+      mediaPlayingAt.set(key, Date.now());
+      if (!had) console.debug('[dwell] media playing start', key);
+    } else {
+      mediaPlayingAt.delete(key);
+      if (had) console.debug('[dwell] media playing stop', key);
+    }
+    dwell.refresh(Date.now(), 'media-state');
+  }
+});
 
 chrome.tabs.onActivated.addListener(() => dwell.refresh(Date.now(), 'tab-activated'));
 
@@ -121,12 +91,14 @@ chrome.windows.onFocusChanged.addListener(() => dwell.refresh(Date.now(), 'windo
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   clearTabState(tabId);
-  mediaPlayingAt.delete(tabId);
+  for (const k of [...mediaPlayingAt.keys()]) {
+    if (Number(k.split(':')[0]) === tabId) mediaPlayingAt.delete(k);
+  }
   dwell.refresh(Date.now(), 'tab-removed');
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // 活跃标签 URL 变化（SPA 路由）：停留段切到新 URL
+  // 活动标签 URL 变化（SPA 路由）：停留目标切到新 URL
   if (changeInfo.url && tab && tab.active) dwell.refresh(Date.now(), 'url-change');
   handleTabUpdated(tabId, changeInfo, tab);
 });
@@ -155,5 +127,5 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('我的历史记录 v2.2 已安装/更新（暖色 UI · 统计增强 · 视频播放计时）');
+  console.log('我的历史记录 v2.2 已安装/更新（暖色 UI · 统计增强 · 多窗口视频计时）');
 });

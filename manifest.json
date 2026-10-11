@@ -18,15 +18,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.bilibili.com/*",
-        "*://*.youtube.com/*",
-        "*://v.qq.com/*",
-        "*://*.iqiyi.com/*",
-        "*://*.youku.com/*",
-        "*://*.douyin.com/*",
-        "*://*.ixigua.com/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["content-scripts/media-watcher.js"],
       "all_frames": true,
       "match_about_blank": true,
