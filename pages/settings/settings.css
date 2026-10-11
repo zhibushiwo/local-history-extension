@@ -31,7 +31,8 @@
 .settings-card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   padding: 4px 20px;
 }
 

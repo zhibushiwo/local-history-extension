@@ -2,14 +2,18 @@
 
 .topbar {
   position: sticky;
-  top: 0;
-  z-index: 10;
+  top: 10px;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 20px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  margin: 12px 16px 0;
+  padding: 10px 16px;
+  background: var(--panel-blur);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
 }
 
@@ -54,7 +58,7 @@
 
 #search:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  box-shadow: var(--focus-ring);
 }
 
 .top-actions {
@@ -151,7 +155,7 @@
 
 .date-range-row input[type='date']:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  box-shadow: var(--focus-ring);
 }
 
 .date-range-actions {
@@ -244,7 +248,7 @@
 
 .item-note {
   font-size: 12px;
-  color: #1a7f37;
+  color: var(--green);
   margin-top: 3px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -288,7 +292,7 @@
 }
 
 .item-action:hover {
-  background: rgba(9, 105, 218, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -403,7 +407,7 @@
 
 #note-textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  box-shadow: var(--focus-ring);
 }
 
 .note-editor-actions {
@@ -737,7 +741,8 @@
   padding: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .stats-cards {
@@ -805,7 +810,7 @@
 
 .stat-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), rgba(9, 105, 218, 0.55));
+  background: linear-gradient(90deg, var(--accent), rgba(217, 119, 87, 0.55));
   border-radius: 4px;
   transition: width 0.3s;
 }
@@ -937,7 +942,7 @@ body.incognito-mode .normal-only {
 
 .pw-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  box-shadow: var(--focus-ring);
 }
 
 .pw-error {
@@ -1061,7 +1066,7 @@ body.incognito-mode .normal-only {
 }
 
 .comparison-value.up {
-  color: #1f883d;
+  color: var(--green);
 }
 .comparison-value.down {
   color: var(--danger);
@@ -1114,16 +1119,16 @@ body.incognito-mode .normal-only {
   background: var(--border);
 }
 .heatmap-day.level-1 {
-  background: #9be9a8;
+  background: rgba(217, 119, 87, 0.3);
 }
 .heatmap-day.level-2 {
-  background: #40c463;
+  background: rgba(217, 119, 87, 0.52);
 }
 .heatmap-day.level-3 {
-  background: #30a14e;
+  background: rgba(217, 119, 87, 0.74);
 }
 .heatmap-day.level-4 {
-  background: #216e39;
+  background: var(--accent);
 }
 
 .heatmap-day.today {
@@ -1222,17 +1227,17 @@ body.incognito-mode .normal-only {
 
 .trend-tooltip {
   position: absolute;
-  background: #1f2328;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   line-height: 1.5;
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 12px));
   white-space: nowrap;
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow);
 }
 
 .trend-tooltip strong {
@@ -1300,16 +1305,16 @@ body.incognito-mode .normal-only {
   background: var(--border);
 }
 .hour-heatmap-cell.level-1 {
-  background: #c6e48b;
+  background: rgba(217, 119, 87, 0.3);
 }
 .hour-heatmap-cell.level-2 {
-  background: #7bc96f;
+  background: rgba(217, 119, 87, 0.52);
 }
 .hour-heatmap-cell.level-3 {
-  background: #239a3b;
+  background: rgba(217, 119, 87, 0.74);
 }
 .hour-heatmap-cell.level-4 {
-  background: #196127;
+  background: var(--accent);
 }
 
 /* ===== 深色模式：热力图色阶 ===== */
@@ -1319,26 +1324,20 @@ body.incognito-mode .normal-only {
     border-color: rgba(187, 128, 9, 0.4);
     color: #e3b341;
   }
-  .item-note {
-    color: #3fb950;
-  }
-  .item-action:hover {
-    background: rgba(88, 166, 255, 0.15);
-  }
   .heatmap-day.level-1,
   .hour-heatmap-cell.level-1 {
-    background: #0e4429;
+    background: rgba(224, 139, 109, 0.42);
   }
   .heatmap-day.level-2,
   .hour-heatmap-cell.level-2 {
-    background: #006d32;
+    background: rgba(224, 139, 109, 0.62);
   }
   .heatmap-day.level-3,
   .hour-heatmap-cell.level-3 {
-    background: #26a641;
+    background: rgba(224, 139, 109, 0.82);
   }
   .heatmap-day.level-4,
   .hour-heatmap-cell.level-4 {
-    background: #39d353;
+    background: var(--accent);
   }
 }

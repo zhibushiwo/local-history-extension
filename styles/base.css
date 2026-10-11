@@ -1,4 +1,5 @@
-/* base.css — 各页面共享的基础样式：变量 / 重置 / 按钮 / 输入框 / toast */
+/* base.css — 各页面共享的基础样式：设计变量 / 重置 / 按钮 / 输入框 / toast / 分段控件
+   配色为暖色系（陶土橙主色），浅暗双主题，跟随系统切换 */
 
 * {
   box-sizing: border-box;
@@ -7,31 +8,49 @@
 }
 
 :root {
-  --bg: #f5f6f8;
+  --bg: #faf9f5;
+  --bg-soft: #f4f1ea;
   --panel: #ffffff;
-  --text: #1f2328;
-  --text-secondary: #656d76;
-  --border: #d0d7de;
-  --accent: #0969da;
-  --danger: #cf222e;
-  --hover: #f3f4f6;
+  --panel-blur: rgba(255, 255, 255, 0.85);
+  --text: #141413;
+  --text-secondary: #6e6a61;
+  --muted: #9d9a90;
+  --border: #e8e6dc;
+  --border-strong: #d9d5c8;
+  --accent: #d97757;
+  --accent-hover: #c86641;
+  --accent-soft: #fbeee9;
+  --green: #788c5d;
+  --blue: #6a9bcc;
+  --danger: #b3442a;
+  --hover: #f4f1ea;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 2px 8px rgba(20, 20, 19, 0.05);
+  --shadow: 0 8px 24px rgba(20, 20, 19, 0.07);
+  --shadow-lg: 0 18px 40px rgba(20, 20, 19, 0.1);
+  --focus-ring: 0 0 0 3px rgba(217, 119, 87, 0.15);
 }
 
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Microsoft YaHei', sans-serif;
-  background: var(--bg);
   color: var(--text);
+  background:
+    radial-gradient(1100px 520px at 8% -12%, #fff8f1 0%, rgba(255, 248, 241, 0) 62%),
+    linear-gradient(160deg, var(--bg) 0%, var(--bg-soft) 100%);
+  background-attachment: fixed;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* 通用输入框（设置页 / popup 用；历史页搜索框有自己的专属样式） */
 .input {
   padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
@@ -40,53 +59,70 @@ body {
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  box-shadow: var(--focus-ring);
 }
 
 .btn {
   padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   background: var(--panel);
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
   transition:
-    background 0.15s,
-    border-color 0.15s;
+    transform 0.12s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .btn:hover {
-  background: var(--hover);
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn.danger {
   color: var(--danger);
-  border-color: rgba(207, 34, 46, 0.4);
+  border-color: rgba(179, 68, 42, 0.4);
 }
 
 .btn.danger:hover {
-  background: rgba(207, 34, 46, 0.1);
+  border-color: var(--danger);
+  background: rgba(179, 68, 42, 0.08);
 }
 
 .btn-small {
   padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   background: var(--panel);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
+  transition:
+    transform 0.12s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .btn-small:hover {
-  background: var(--hover);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-small.primary {
@@ -96,16 +132,18 @@ body {
 }
 
 .btn-small.primary:hover {
-  background: #0860c4;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .btn-small.danger-small {
   color: var(--danger);
-  border-color: rgba(207, 34, 46, 0.4);
+  border-color: rgba(179, 68, 42, 0.4);
 }
 
 .btn-small.danger-small:hover {
-  background: rgba(207, 34, 46, 0.1);
+  border-color: var(--danger);
+  background: rgba(179, 68, 42, 0.08);
 }
 
 .toast {
@@ -113,11 +151,12 @@ body {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: #1f2328;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  box-shadow: var(--shadow-lg);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -131,16 +170,69 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
-/* ===== 深色模式：变量 ===== */
+/* 分段控件（次数/时长、范围切换等） */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.segmented button {
+  border: none;
+  background: transparent;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.segmented button:hover {
+  color: var(--accent);
+}
+
+.segmented button.active {
+  background: var(--panel);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== 深色模式：暖褐底 + 提亮主色 ===== */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --text: #e6edf3;
-    --text-secondary: #8b949e;
-    --border: #30363d;
-    --accent: #58a6ff;
-    --danger: #f85149;
-    --hover: #21262d;
+    --bg: #171512;
+    --bg-soft: #201d19;
+    --panel: #211e1a;
+    --panel-blur: rgba(33, 30, 26, 0.82);
+    --text: #ece7de;
+    --text-secondary: #b3ada0;
+    --muted: #857f72;
+    --border: #35312a;
+    --border-strong: #46413a;
+    --accent: #e08b6d;
+    --accent-hover: #eb9f85;
+    --accent-soft: rgba(224, 139, 109, 0.16);
+    --green: #a3b884;
+    --blue: #8fb3d9;
+    --danger: #e57a5a;
+    --hover: #2a2622;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.45);
+    --focus-ring: 0 0 0 3px rgba(224, 139, 109, 0.22);
+  }
+
+  body {
+    background:
+      radial-gradient(1100px 520px at 8% -12%, rgba(224, 139, 109, 0.06) 0%, rgba(224, 139, 109, 0) 62%),
+      linear-gradient(160deg, var(--bg) 0%, var(--bg-soft) 100%);
   }
 }

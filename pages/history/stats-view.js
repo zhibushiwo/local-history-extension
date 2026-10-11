@@ -5,6 +5,28 @@ import { escapeHtml, getDateKey, dwellTotalOf, formatDwellCompact } from '../../
 const trendCanvas = document.getElementById('stat-trend');
 const trendTooltip = document.getElementById('stat-trend-tooltip');
 
+// 图表配色：与 styles/base.css 的设计变量保持一致（暖色系）
+function chartPalette() {
+  const isDark =
+    window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return isDark
+    ? {
+        grid: 'rgba(236, 231, 222, 0.09)',
+        text: '#857f72',
+        series: '#e08b6d',
+        fillTop: 'rgba(224, 139, 109, 0.4)',
+        fillBottom: 'rgba(224, 139, 109, 0)',
+      }
+    : {
+        grid: 'rgba(20, 20, 19, 0.07)',
+        text: '#9d9a90',
+        series: '#d97757',
+        fillTop: 'rgba(217, 119, 87, 0.32)',
+        fillBottom: 'rgba(217, 119, 87, 0)',
+      };
+}
+
 // ==================== 统计：基础卡片 ====================
 function renderStatsCards(records) {
   const total = records.length;
@@ -182,11 +204,9 @@ function renderTrendChart(records, days) {
   ctx.clearRect(0, 0, w, h);
 
   // Y 轴网格 + 刻度
-  const isDark =
-    window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
-  const textColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)';
+  const pal = chartPalette();
+  const gridColor = pal.grid;
+  const textColor = pal.text;
 
   ctx.strokeStyle = gridColor;
   ctx.fillStyle = textColor;
@@ -215,13 +235,8 @@ function renderTrendChart(records, days) {
 
   // 渐变填充
   const grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
-  if (isDark) {
-    grad.addColorStop(0, 'rgba(88, 166, 255, 0.4)');
-    grad.addColorStop(1, 'rgba(88, 166, 255, 0)');
-  } else {
-    grad.addColorStop(0, 'rgba(9, 105, 218, 0.35)');
-    grad.addColorStop(1, 'rgba(9, 105, 218, 0)');
-  }
+  grad.addColorStop(0, pal.fillTop);
+  grad.addColorStop(1, pal.fillBottom);
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, padT + chartH);
@@ -256,7 +271,7 @@ function renderTrendChart(records, days) {
       ctx.bezierCurveTo(cx1, cy1, cx2, cy2, p.x, p.y);
     }
   });
-  ctx.strokeStyle = isDark ? '#58a6ff' : '#0969da';
+  ctx.strokeStyle = pal.series;
   ctx.lineWidth = 2;
   ctx.lineJoin = 'round';
   ctx.stroke();
