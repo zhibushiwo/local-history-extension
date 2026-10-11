@@ -1749,7 +1749,7 @@ body.incognito-mode .normal-only {
    ============================================================ */
 
 .stats-tabs-row {
-  margin-bottom: 16px;
+  margin: 14px 0 16px;
 }
 
 /* 通栏三等分：作为面板的结构分隔，而不是悬浮的小胶囊 */
