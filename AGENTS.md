@@ -16,8 +16,11 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - `lib/search.js` / `lib/search-behavior.js` / `lib/site-name.js` / `lib/export.js` / `lib/utils.js`：搜索语法解析 / 搜索行为分析（引擎 URL→关键词）/ 站点名推导 / 导出构建 / 通用纯函数
 - 快捷键 Ctrl+Shift+H（Mac Command+Shift+H）打开历史页（manifest `commands` + SW 监听）
 - 视觉：设计 token 全在 `styles/base.css`（--accent 陶土橙 #d97757 系），浅色抄自留存扩展、暗色自配；图表 Canvas 配色收敛在 `stats-view.js` 的 `chartPalette()`；热力图色阶用主色透明度阶梯（不再是 GitHub 绿）
-- `pages/history/`：`history.js`（状态+绑定+列表渲染，~1440 行）+ `stats-view.js`（统计渲染，数据显式传参）
+- `pages/history/`：`history.js`（状态+绑定+列表渲染，~1500 行）+ `stats-view.js`（统计渲染，数据显式传参）
 - `popup/`：总记录 / 今日访问 / 今日停留 + 暂停记录开关（与 `recordingPaused` 联动）
+- `tests/`：纯逻辑单测（dwell / search-behavior / site-name），`node tests/run-all.mjs` 全跑，零依赖
+- `pack.mjs`：打包脚本（`node pack.mjs`），只打运行文件（manifest/background/lib/pages/popup/styles/icons）→ `dist/local-history-extension-vX.Y.Z.zip`，排除文档与测试；dist/ 已 gitignore
+- 快捷键：Ctrl+Shift+H（Mac Command+Shift+H）打开历史页；列表页按 `/` 聚焦搜索框
 
 ## 实现状态总览
 
@@ -174,7 +177,8 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - **KPI 卡 8 张**：新增总停留、日均停留（分母 = 范围内有停留记录的天数）
 - **新榜**：访问最多的页面 Top 10（按 visitCount 加权）；页面平均停留 Top 10（标题+域名合并展示，平均每次 = 总时长 ÷ visitCount）
 - **搜索行为**：从 Bing/Google/百度/搜狗/DDG 结果页 URL 解析关键词（`lib/search-behavior.js`），另含 B站（search.bilibili.com，任意路径取 `keyword`）/掘金/GitHub 站内搜索；清洗 `-site:` 等语法；**10 分钟滑动窗口去重**（同关键词相邻间隔都在窗口内则持续合并——翻页后超窗重搜也会被并入，是原样移植的既定语义）；日均分母 = 范围内首尾记录跨度天数；展示引擎分布 chips + 每个关键词的来源引擎标签
-- **统计面板分三个 tab**（分段控件，KPI 卡与对比指标常驻 tab 外）：「趋势」= 日历热力图 + 访问趋势 + 每日停留；「Top 榜」= 页面/网站 Top10 + 页面平均停留 + 网站停留排行；「分布」= 时段热力图 + 24 小时 + 星期 + 搜索行为。切回趋势 tab 时重绘 Canvas 图（隐藏的 canvas 无尺寸画不出来）
+- **统计联动列表**：点网站 Top 榜站点行 = 列表应用 `site:domain`（范围跟随当前 tag）；点关键词行 = `url:关键词`（含空格退化为全文搜索）；改名仍走右键。桥接经 `stats-view.js` 的 `initStatsFilterBridge(cb)`
+- **统计面板分三个 tab**（分段控件，KPI 卡与对比指标常驻 tab 外）：「趋势」= 日历热力图 + 访问趋势 + 每日停留；「Top 榜」= 页面/网站 Top10 + 页面平均停留 + 网站停留排行；「分布」= 时段热力图 + 24 小时 + 星期 + 搜索行为。切回趋势 tab 时重绘 Canvas 图（隐藏的 canvas 无尺寸画不出来）；tab 选择记忆在 sessionStorage（键 `mh_stats_tab`，刷新同会话内保留）
 - **站点名称**：自动推导（`lib/site-name.js`：分隔符截断、取最短 URL≈首页的标题、≤20 字、同名多域名弃用）+ 用户别名（右键或点击 Top 榜站点行改，存 `settings.siteNames`）。注意 B 站这类标题（`~-` 无空格连字符）推不出名，回退显示域名
 - **快捷键**：Ctrl+Shift+H / Mac Command+Shift+H 打开历史页（Backlog #K 已还）
 
@@ -198,6 +202,6 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - 已知无害问题（不处理）：删除后 background `urlState` 脏引用（update 静默 null）；`updateRecord` 读-写两事务的理论竞态（丢一次 visitCount）；`doExport` 在筛选结果为 0 时兜底导出全部
 - **visitCount 虚增修复（2026-10-07）**：SPA（DeepSeek/B站/GitHub 等）频繁改 `document.title` 曾被当作访问累加（78 次的来源）。现在只有 `changeInfo.status === 'complete'`（真实加载/刷新）才 `visitCount++`，仅标题/图标变化走 `patchVisitContent`（只更新标题/时间戳/图标）；debounce 窗口内任一 complete 事件即记为真实加载（`pendingLoads`）。历史虚高的旧数据无法还原，未处理
 - 顶栏布局（2026-10-11 调整）：[导出 ▾] [常用搜索 ▾] [更多 ▾] [⚙ 设置]，设置改为独立齿轮按钮打开弹窗；「更多」菜单分「记录 / 数据」两组 + 危险区（无痕/暂停 ｜ 导入/同步×2/查重 ｜ 清空全部）；列表/统计为双 Tab 共享筛选栏
-- 设置键 `settings`（chrome.storage.local，`lib/settings.js` 局部合并）：`recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep` / `siteNames`；SW 监听 `storage.onChanged` 热生效，history.js 启动时读取，弹窗保存后立即更新页面侧 `PAGE_SIZE`/`backupStep`。与既有键（`recordingPaused` / `savedSearches` / `recentSearches` / `lastRemindedThreshold` / `incognitoPasswordHash`）互不干扰
+- 设置键 `settings`（chrome.storage.local，`lib/settings.js` 局部合并）：`recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep` / `siteNames`；SW 监听 `storage.onChanged` 热生效，history.js 启动时读取，弹窗保存后立即更新页面侧 `PAGE_SIZE`/`backupStep`。与既有键（`recordingPaused` / `savedSearches` / `recentSearches` / `lastRemindedThreshold` / `incognitoPasswordHash` / `lastExportTime`）互不干扰；`lastExportTime` 每次导出时写入，备份横幅文案与设置弹窗底部展示"上次导出"
 - 代码审查遗留记录（2026-10-06）：批量选择在 `loadRecords` 时修剪；热力图固定基于 `allRecords` 渲染；导入的 JSON 未过滤 `javascript:` URL（个人工具，点击才会触发，暂接受）
 - **修改停留时长逻辑**：`lib/dwell.js` 是依赖注入设计（chrome API 全部由 SW 传入），纯逻辑部分（`splitAcrossMidnight` / `shouldCount` / 控制器）可在 Node 直接 import 写临时单测验证

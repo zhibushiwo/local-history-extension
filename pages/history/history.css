@@ -1820,3 +1820,11 @@ body.incognito-mode .normal-only {
   padding: 1px 7px;
   white-space: nowrap;
 }
+
+/* 设置弹窗底部：上次导出时间 */
+.settings-actions .modal-note {
+  margin-right: auto;
+  align-self: center;
+  font-size: 11px;
+  color: var(--muted);
+}

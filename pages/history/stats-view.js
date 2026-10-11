@@ -750,7 +750,7 @@ function renderSearchBehavior(records) {
   box.innerHTML = rows
     .map(
       (r, i) => `
-      <div class="kw-row">
+      <div class="kw-row" data-q="${escapeHtml(r.query)}" title="点击查看该关键词的搜索历史">
         <span class="kw-rank">${i + 1}</span>
         <span class="kw-text"><span class="kw-q" title="${escapeHtml(r.query)}">${escapeHtml(r.query)}</span><span class="kw-engines">${r.engines
             .map(([engine, count]) => `<i title="${escapeHtml(engine)} ${count} 次">${escapeHtml(engine)}${count > 1 ? ' ' + count : ''}</i>`)
@@ -803,6 +803,12 @@ async function saveAlias() {
   }
 }
 
+// 统计 → 列表联动筛选的桥接：由 history.js 注册回调（type: 'site'|'url', value）
+let onStatsFilter = null;
+export function initStatsFilterBridge(cb) {
+  onStatsFilter = cb;
+}
+
 function bindAlias(container) {
   const open = e => {
     const label = e.target.closest('.stat-bar-label[data-domain]');
@@ -816,10 +822,11 @@ function bindAlias(container) {
     e.stopPropagation();
     open(e);
   });
+  // 左键：跳到列表按该网站筛选（site:，范围跟随当前 tag）；改名走右键
   container.addEventListener('click', e => {
-    if (!e.target.closest('.stat-bar-label[data-domain]')) return;
-    e.stopPropagation(); // 避免立刻被"点击外部关闭"逻辑吃掉
-    open(e);
+    const label = e.target.closest('.stat-bar-label[data-domain]');
+    if (!label || !onStatsFilter) return;
+    onStatsFilter('site', label.dataset.domain);
   });
   container.addEventListener('mousemove', e => {
     container.style.cursor = e.target.closest('.stat-bar-label[data-domain]')
@@ -842,7 +849,11 @@ document.addEventListener('click', e => {
 window.addEventListener('resize', closeAliasPop);
 
 // ==================== 统计：分组 Tab（趋势 / Top 榜 / 分布） ====================
+// 记忆到 sessionStorage：同页面会话内刷新不重置
 let statsTab = 'trend';
+try {
+  statsTab = sessionStorage.getItem('mh_stats_tab') || 'trend';
+} catch (e) {}
 
 function applyStatsTab() {
   for (const key of ['trend', 'top', 'dist']) {
@@ -856,6 +867,9 @@ function applyStatsTab() {
 
 function setStatsTab(tab) {
   statsTab = tab;
+  try {
+    sessionStorage.setItem('mh_stats_tab', tab);
+  } catch (e) {}
   applyStatsTab();
   // 切回趋势 tab 时重绘画布图（隐藏的 canvas 无尺寸，绘制会被跳过）
   if (tab === 'trend' && lastStats) {
@@ -906,6 +920,13 @@ bindTrendHover(
 
 bindAlias(document.getElementById('stat-top-domains'));
 bindAlias(document.getElementById('stat-top-dwell'));
+
+// 关键词行 → 跳到列表按该关键词筛选（url:；含空格的词退化为普通全文搜索）
+document.getElementById('stat-search-kw').addEventListener('click', e => {
+  const row = e.target.closest('.kw-row[data-q]');
+  if (!row || !onStatsFilter) return;
+  onStatsFilter('url', row.dataset.q);
+});
 
 // 热力图 指标/范围 切换
 document.getElementById('heatmap-metric').addEventListener('click', e => {

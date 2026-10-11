@@ -128,5 +128,5 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('我的历史记录扩展已安装 v2（按年分库 + 抖动过滤）');
+  console.log('我的历史记录 v2.1 已安装/更新（模块化 · 暖色 UI · 统计增强）');
 });

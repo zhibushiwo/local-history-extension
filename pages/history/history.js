@@ -12,7 +12,7 @@ import {
 import { getSettings, DEFAULT_SETTINGS } from '../../lib/settings.js';
 import { parseSearch, matchesSearch } from '../../lib/search.js';
 import { buildMarkdown, buildCsv, buildHtml, downloadFile } from '../../lib/export.js';
-import { renderStats, renderTrendChart, renderDwellTrend } from './stats-view.js';
+import { renderStats, renderTrendChart, renderDwellTrend, initStatsFilterBridge } from './stats-view.js';
 
 // ==================== DOM ====================
 const listEl = document.getElementById('list');
@@ -79,6 +79,7 @@ const smPagesize = document.getElementById('sm-pagesize');
 const smBackup = document.getElementById('sm-backup');
 const smSave = document.getElementById('sm-save');
 const smReset = document.getElementById('sm-reset');
+const smLastExport = document.getElementById('sm-last-export');
 
 const btnSearches = document.getElementById('btn-searches');
 const searchesMenu = document.getElementById('searches-menu');
@@ -451,6 +452,10 @@ function doExport(format) {
     );
   }
   showToast(`已导出 ${toExport.length} 条（${format}）`);
+  // 记录导出时间：备份提醒与设置弹窗展示
+  try {
+    chrome.storage.local.set({ lastExportTime: Date.now() });
+  } catch (e) {}
 }
 
 // ==================== 全局点击 ====================
@@ -489,6 +494,19 @@ document.addEventListener('click', e => {
   if (!recentPop.hidden && !searchWrap.contains(e.target)) {
     recentPop.hidden = true;
   }
+});
+
+// `/` 聚焦搜索框（输入控件内不拦截）
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (
+    t &&
+    (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+  )
+    return;
+  e.preventDefault();
+  searchEl.focus({ preventScroll: true });
 });
 
 document.addEventListener('keydown', e => {
@@ -897,7 +915,7 @@ async function updateStorageUsage() {
 
 async function checkBackupReminder() {
   try {
-    const stored = await chrome.storage.local.get('lastRemindedThreshold');
+    const stored = await chrome.storage.local.get(['lastRemindedThreshold', 'lastExportTime']);
     const lastReminded = stored.lastRemindedThreshold || 0;
     const count = await MyHistoryDB.countAll();
     const threshold = Math.floor(count / backupStep) * backupStep;
@@ -905,8 +923,11 @@ async function checkBackupReminder() {
 
     const usage = await updateStorageUsage();
     const sizeText = usage > 0 ? `（占用 ${formatStorageSize(usage)}）` : '';
+    const lastTxt = stored.lastExportTime
+      ? `上次导出：${formatDateTime(stored.lastExportTime)}`
+      : '从未导出';
     backupText.textContent =
-      `已累计 ${count} 条记录${sizeText}，建议导出 JSON 备份`;
+      `已累计 ${count} 条记录${sizeText} · ${lastTxt}，建议导出 JSON 备份`;
     backupBanner.hidden = false;
 
     const dismiss = async () => {
@@ -1305,6 +1326,10 @@ async function openSettingsModal() {
     smIdle.value = String(s.idleThresholdSec || DEFAULT_SETTINGS.idleThresholdSec);
     smPagesize.value = String(s.pageSize || DEFAULT_SETTINGS.pageSize);
     smBackup.value = String(s.backupStep || DEFAULT_SETTINGS.backupStep);
+    const { lastExportTime } = await chrome.storage.local.get('lastExportTime');
+    smLastExport.textContent = lastExportTime
+      ? '上次导出备份：' + formatDateTime(lastExportTime)
+      : '尚未导出过备份';
   } catch (e) {}
   settingsModal.hidden = false;
 }
@@ -1511,6 +1536,14 @@ window.addEventListener(
 
 btnTop.addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// 统计 → 列表联动：点 Top 榜站点行 / 搜索关键词行，跳回列表应用对应筛选
+// （site: 范围跟随当前 tag，与条目上 📋 按钮同款行为）
+initStatsFilterBridge((type, value) => {
+  setView('list');
+  if (type === 'site') applySearch('site:' + value);
+  else applySearch(/\s/.test(value) ? value : 'url:' + value); // 含空格的关键词退化为全文 AND 搜索
 });
 
 // ==================== 初始化 ====================
