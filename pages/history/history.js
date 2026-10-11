@@ -71,7 +71,14 @@ const moreSyncMonth = document.getElementById('more-sync-month');
 const moreMerge = document.getElementById('more-merge');
 const morePause = document.getElementById('more-pause');
 const moreClear = document.getElementById('more-clear');
-const moreSettings = document.getElementById('more-settings');
+const btnSettings = document.getElementById('btn-settings');
+const settingsModal = document.getElementById('settings-modal');
+const smDwell = document.getElementById('sm-dwell');
+const smIdle = document.getElementById('sm-idle');
+const smPagesize = document.getElementById('sm-pagesize');
+const smBackup = document.getElementById('sm-backup');
+const smSave = document.getElementById('sm-save');
+const smReset = document.getElementById('sm-reset');
 
 const btnSearches = document.getElementById('btn-searches');
 const searchesMenu = document.getElementById('searches-menu');
@@ -480,6 +487,7 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!pwModal.hidden) closePwModal();
   if (!noteEditor.hidden) closeNoteEditor();
+  if (!settingsModal.hidden) settingsModal.hidden = true;
   if (!recentPop.hidden) recentPop.hidden = true;
   if (!searchesMenu.hidden) searchesMenu.hidden = true;
 });
@@ -1052,11 +1060,29 @@ async function showRecentPop() {
     if (list.length === 0) return;
     recentPop.innerHTML = list
       .map(
-        q =>
-          `<button type="button" class="recent-item" data-q="${escapeHtml(q)}" title="${escapeHtml(q)}">🕘 ${escapeHtml(q)}</button>`,
+        (q, i) =>
+          `<div class="recent-item-wrap">
+            <button type="button" class="recent-item" data-q="${escapeHtml(q)}" title="${escapeHtml(q)}">🕘 ${escapeHtml(q)}</button>
+            <button type="button" class="recent-del" data-i="${i}" title="从最近记录中删除">✕</button>
+          </div>`,
       )
       .join('');
     recentPop.hidden = false;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function deleteRecentSearch(i) {
+  try {
+    const list = await getRecentSearches();
+    list.splice(i, 1);
+    await chrome.storage.local.set({ recentSearches: list });
+    if (list.length === 0) {
+      recentPop.hidden = true;
+      return;
+    }
+    await showRecentPop();
   } catch (err) {
     console.error(err);
   }
@@ -1076,6 +1102,13 @@ searchEl.addEventListener('keydown', e => {
 });
 
 recentPop.addEventListener('mousedown', e => {
+  const del = e.target.closest('.recent-del');
+  if (del) {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteRecentSearch(Number(del.dataset.i));
+    return;
+  }
   const item = e.target.closest('.recent-item');
   if (!item) return;
   e.preventDefault();
@@ -1256,9 +1289,53 @@ moreClear.addEventListener('click', () => {
   clearAllRecords();
 });
 
-moreSettings.addEventListener('click', () => {
+// ==================== 设置弹窗 ====================
+async function openSettingsModal() {
+  try {
+    const s = await getSettings();
+    smDwell.checked = s.recordDwell !== false;
+    smIdle.value = String(s.idleThresholdSec || DEFAULT_SETTINGS.idleThresholdSec);
+    smPagesize.value = String(s.pageSize || DEFAULT_SETTINGS.pageSize);
+    smBackup.value = String(s.backupStep || DEFAULT_SETTINGS.backupStep);
+  } catch (e) {}
+  settingsModal.hidden = false;
+}
+
+smSave.addEventListener('click', async () => {
+  try {
+    const patch = {
+      recordDwell: smDwell.checked,
+      idleThresholdSec: Math.min(3600, Math.max(15, Number(smIdle.value) || DEFAULT_SETTINGS.idleThresholdSec)),
+      pageSize: Number(smPagesize.value) || DEFAULT_SETTINGS.pageSize,
+      backupStep: Number(smBackup.value) || DEFAULT_SETTINGS.backupStep,
+    };
+    await saveSettings(patch);
+    // 立即反映到当前页面（停留时长由 background 监听 storage 变更热生效）
+    PAGE_SIZE = patch.pageSize;
+    backupStep = patch.backupStep;
+    settingsModal.hidden = true;
+    showToast('设置已保存，立即生效');
+  } catch (err) {
+    console.error(err);
+    showToast('保存失败');
+  }
+});
+
+smReset.addEventListener('click', () => {
+  smDwell.checked = DEFAULT_SETTINGS.recordDwell;
+  smIdle.value = String(DEFAULT_SETTINGS.idleThresholdSec);
+  smPagesize.value = String(DEFAULT_SETTINGS.pageSize);
+  smBackup.value = String(DEFAULT_SETTINGS.backupStep);
+  showToast('已填入默认值，点击保存生效');
+});
+
+settingsModal.addEventListener('click', e => {
+  if (e.target === settingsModal) settingsModal.hidden = true;
+});
+
+btnSettings.addEventListener('click', () => {
   moreMenu.hidden = true;
-  chrome.tabs.create({ url: chrome.runtime.getURL('pages/settings/settings.html') });
+  openSettingsModal();
 });
 
 // ==================== 无痕视图 ====================

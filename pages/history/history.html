@@ -54,17 +54,19 @@
     <div class="dropdown">
       <button id="btn-more" class="btn">更多 ▾</button>
       <div id="more-menu" class="dropdown-menu" hidden>
+        <div class="menu-label">记录</div>
         <button type="button" id="more-incognito">👻 无痕视图</button>
-        <button type="button" id="more-import" class="normal-only">📁 导入</button>
-        <button type="button" id="more-sync-all" class="normal-only">🔄 同步 Chrome 全部历史</button>
-        <button type="button" id="more-sync-month" class="normal-only">🔄 同步 Chrome 最近 30 天</button>
-        <button type="button" id="more-merge" class="normal-only">🔍 检测重复记录</button>
         <button type="button" id="more-pause" class="normal-only">⏸ 暂停记录</button>
-        <button type="button" id="more-settings">⚙ 设置</button>
+        <div class="menu-label normal-only">数据</div>
+        <button type="button" id="more-import" class="normal-only">📁 导入 JSON 备份</button>
+        <button type="button" id="more-sync-all" class="normal-only">🔄 同步全部历史</button>
+        <button type="button" id="more-sync-month" class="normal-only">🔄 同步最近 30 天</button>
+        <button type="button" id="more-merge" class="normal-only">🔍 检测重复记录</button>
         <div class="dropdown-divider normal-only"></div>
         <button type="button" id="more-clear" class="danger-item normal-only">🗑️ 清空全部</button>
       </div>
     </div>
+    <button type="button" id="btn-settings" class="icon-btn" title="设置">⚙</button>
   </div>
 </header>
 
@@ -230,7 +232,7 @@
       <div><span class="search-kpi-value" id="kpi-search-avg">-</span><span class="search-kpi-label">日均搜索</span></div>
     </div>
     <div id="stat-search-kw" class="kw-list"></div>
-    <p class="chart-note">关键词从搜索结果页 URL 解析（Bing / Google / 百度 / 搜狗 / DuckDuckGo）；同一关键词 10 分钟内的翻页或二次筛选只算一次；站内搜索不计入。</p>
+    <p class="chart-note">关键词从搜索结果页 URL 解析（Bing / Google / 百度 / 搜狗 / DuckDuckGo，含 B站 / 掘金 / GitHub 站内搜索）；同一关键词 10 分钟内的翻页或二次筛选只算一次。</p>
   </div>
 
 </section>
@@ -263,6 +265,55 @@
     <div class="note-editor-actions">
       <button type="button" id="note-cancel" class="btn-small">取消</button>
       <button type="button" id="note-save" class="btn-small primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings-modal" class="note-editor-overlay" hidden>
+  <div class="settings-modal">
+    <h4>⚙ 设置</h4>
+    <div class="setting-row">
+      <div class="setting-text">
+        <b>记录页面停留时长</b>
+        <span class="setting-hint">按前台聚焦与系统空闲推算，保存后立即生效</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="sm-dwell">
+        <span class="track"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-text">
+        <b>空闲判定阈值（秒）</b>
+        <span class="setting-hint">超过该时长无键鼠输入即停止计时（15–3600）</span>
+      </div>
+      <input type="number" id="sm-idle" class="input num" min="15" max="3600" step="5">
+    </div>
+    <div class="setting-row">
+      <div class="setting-text">
+        <b>列表每次渲染条数</b>
+        <span class="setting-hint">滚动到底部时每次追加加载的记录数</span>
+      </div>
+      <select id="sm-pagesize" class="input num">
+        <option value="100">100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <div class="setting-text">
+        <b>备份提醒档位</b>
+        <span class="setting-hint">记录总数每超过一档提醒一次导出备份</span>
+      </div>
+      <select id="sm-backup" class="input num">
+        <option value="10000">1 万条</option>
+        <option value="50000">5 万条</option>
+        <option value="100000">10 万条</option>
+      </select>
+    </div>
+    <div class="settings-actions">
+      <button type="button" class="btn-small" id="sm-reset">恢复默认</button>
+      <button type="button" class="btn-small primary" id="sm-save">保存</button>
     </div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 # 我的历史记录扩展 — 功能清单（全部已实现）
 
 Chrome MV3 扩展，个人私用（单机、单用户），独立 IndexedDB 存储浏览历史。
-**2026-10-11 完成模块化架构重构**（功能与数据模型零变化）：`lib/`（db / recorder / dwell / search / search-behavior / site-name / export / settings / utils）、`background/service-worker.js`（事件接线）、`pages/history/`（主页面，单页双 Tab）、`pages/settings/`（设置页）、`popup/`（快捷入口）、`styles/base.css`（公共样式）。同日完成**暖色系换肤**（浅色 token 取自同源项目，暗色为自配的同色相暖褐版）与**统计页增强**（见「统计页增强」章节）。
+**2026-10-11 完成模块化架构重构**（功能与数据模型零变化）：`lib/`（db / recorder / dwell / search / search-behavior / site-name / export / settings / utils）、`background/service-worker.js`（事件接线）、`pages/history/`（主页面，单页双 Tab，含设置弹窗）、`popup/`（快捷入口）、`styles/base.css`（公共样式）。同日完成**暖色系换肤**（浅色 token 取自同源项目，暗色为自配的同色相暖褐版）与**统计页增强**（见「统计页增强」章节）。
 
 **实现状态：17 项待办全部完成（2026-10-06）**，本文档转为功能/设计参考。Backlog 2 项未实现。
 
@@ -12,7 +12,7 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - `lib/db.js`：IndexedDB 层 named exports（API 签名同旧 `MyHistoryDB` 全局），页面 / SW / popup 都 `import * as MyHistoryDB` 直连 IndexedDB，**不经 SW 消息协议**
 - `lib/recorder.js`：URL 归一化、访问去重状态机、`recordTab`/无痕分流、`handleTabUpdated` debounce、`locateRecord`（供 dwell 定位记录）
 - `lib/dwell.js`：停留时长纯逻辑 + 控制器工厂（chrome API 全部依赖注入，可在 Node 里单测）
-- `lib/settings.js`：设置中心，`settings` 键存 `chrome.storage.local`，`saveSettings(patch)` 局部合并；已参数化 `recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep`
+- `lib/settings.js`：设置中心，`settings` 键存 `chrome.storage.local`，`saveSettings(patch)` 局部合并；已参数化 `recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep` / `siteNames`。设置 UI 是历史页顶栏 ⚙ 按钮打开的**弹窗**（原独立设置页已删除，options_ui 指回 history.html）
 - `lib/search.js` / `lib/search-behavior.js` / `lib/site-name.js` / `lib/export.js` / `lib/utils.js`：搜索语法解析 / 搜索行为分析（引擎 URL→关键词）/ 站点名推导 / 导出构建 / 通用纯函数
 - 快捷键 Ctrl+Shift+H（Mac Command+Shift+H）打开历史页（manifest `commands` + SW 监听）
 - 视觉：设计 token 全在 `styles/base.css`（--accent 陶土橙 #d97757 系），浅色抄自留存扩展、暗色自配；图表 Canvas 配色收敛在 `stats-view.js` 的 `chartPalette()`；热力图色阶用主色透明度阶梯（不再是 GitHub 绿）
@@ -173,7 +173,7 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - **每日停留时长趋势图**：橄榄绿折线，跟随「访问趋势」的 30/半年/一年档位（同一组 tab 联动两图）；折线绘制抽成通用 `drawLineChart(series, opts)`
 - **KPI 卡 8 张**：新增总停留、日均停留（分母 = 范围内有停留记录的天数）
 - **新榜**：访问最多的页面 Top 10（按 visitCount 加权）；页面平均停留 Top 10（标题+域名合并展示，平均每次 = 总时长 ÷ visitCount）
-- **搜索行为**：从 Bing/Google/百度/搜狗/DDG 结果页 URL 解析关键词（`lib/search-behavior.js`），清洗 `-site:` 等语法；**10 分钟滑动窗口去重**（同关键词相邻间隔都在窗口内则持续合并——翻页后超窗重搜也会被并入，是原样移植的既定语义）；日均分母 = 范围内首尾记录跨度天数；站内搜索不计入
+- **搜索行为**：从 Bing/Google/百度/搜狗/DDG 结果页 URL 解析关键词（`lib/search-behavior.js`），另含 B站（search.bilibili.com，任意路径取 `keyword`）/掘金/GitHub 站内搜索；清洗 `-site:` 等语法；**10 分钟滑动窗口去重**（同关键词相邻间隔都在窗口内则持续合并——翻页后超窗重搜也会被并入，是原样移植的既定语义）；日均分母 = 范围内首尾记录跨度天数
 - **站点名称**：自动推导（`lib/site-name.js`：分隔符截断、取最短 URL≈首页的标题、≤20 字、同名多域名弃用）+ 用户别名（右键或点击 Top 榜站点行改，存 `settings.siteNames`）。注意 B 站这类标题（`~-` 无空格连字符）推不出名，回退显示域名
 - **快捷键**：Ctrl+Shift+H / Mac Command+Shift+H 打开历史页（Backlog #K 已还）
 
@@ -192,11 +192,11 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 
 - manifest 权限：`tabs` / `history` / `storage` / `unlimitedStorage` / `favicon` / `idle` / `alarms`（2026-10-11 新增 alarms 供停留时长心跳）。**2026-10-06 曾发现缺 `"storage"` 导致 chrome.storage.local 全部静默失败（被 try/catch 掩盖）**，新增 storage 依赖时先核对权限
 - db.js（现 `lib/db.js`，ES module named exports）API 全集：`patchRecord`（不动 visitCount）、`countAll`、`deleteRecords`、`mergeDuplicates`、无痕五件套（add/get/delete/deleteBatch/clear）；页面/SW/popup 均 `import * as MyHistoryDB` 直连
-- 设置键 `settings`（chrome.storage.local，`lib/settings.js` 局部合并）：`recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep`；SW 监听 `storage.onChanged` 热生效，history.js 启动时读取。与既有键（`recordingPaused` / `savedSearches` / `recentSearches` / `lastRemindedThreshold` / `incognitoPasswordHash`）互不干扰
 - 所有 UI 文案中文；暗色模式跟随系统（`prefers-color-scheme`，变量在 `styles/base.css`）
 - 导出四格式覆盖 note/starred/dwell；导入 `normalizeRecord` 保留 note/starred/dwellByDay
 - 已知无害问题（不处理）：删除后 background `urlState` 脏引用（update 静默 null）；`updateRecord` 读-写两事务的理论竞态（丢一次 visitCount）；`doExport` 在筛选结果为 0 时兜底导出全部
 - **visitCount 虚增修复（2026-10-07）**：SPA（DeepSeek/B站/GitHub 等）频繁改 `document.title` 曾被当作访问累加（78 次的来源）。现在只有 `changeInfo.status === 'complete'`（真实加载/刷新）才 `visitCount++`，仅标题/图标变化走 `patchVisitContent`（只更新标题/时间戳/图标）；debounce 窗口内任一 complete 事件即记为真实加载（`pendingLoads`）。历史虚高的旧数据无法还原，未处理
-- 顶栏布局（2026-10-07 精简）：仅保留 [导出 ▾] [常用搜索 ▾] [更多 ▾]，其余功能（无痕/导入/同步/查重/暂停/清空全部/⚙ 设置）全部收入「更多」菜单；列表/统计为双 Tab 共享筛选栏
+- 顶栏布局（2026-10-11 调整）：[导出 ▾] [常用搜索 ▾] [更多 ▾] [⚙ 设置]，设置改为独立齿轮按钮打开弹窗；「更多」菜单分「记录 / 数据」两组 + 危险区（无痕/暂停 ｜ 导入/同步×2/查重 ｜ 清空全部）；列表/统计为双 Tab 共享筛选栏
+- 设置键 `settings`（chrome.storage.local，`lib/settings.js` 局部合并）：`recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep` / `siteNames`；SW 监听 `storage.onChanged` 热生效，history.js 启动时读取，弹窗保存后立即更新页面侧 `PAGE_SIZE`/`backupStep`。与既有键（`recordingPaused` / `savedSearches` / `recentSearches` / `lastRemindedThreshold` / `incognitoPasswordHash`）互不干扰
 - 代码审查遗留记录（2026-10-06）：批量选择在 `loadRecords` 时修剪；热力图固定基于 `allRecords` 渲染；导入的 JSON 未过滤 `javascript:` URL（个人工具，点击才会触发，暂接受）
 - **修改停留时长逻辑**：`lib/dwell.js` 是依赖注入设计（chrome API 全部由 SW 传入），纯逻辑部分（`splitAcrossMidnight` / `shouldCount` / 控制器）可在 Node 直接 import 写临时单测验证

@@ -59,7 +59,8 @@ $('btn-open').addEventListener('click', () => {
 });
 
 $('btn-settings').addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('pages/settings/settings.html') });
+  // 设置已并入历史页的 ⚙ 弹窗，这里直接打开历史页
+  chrome.tabs.create({ url: chrome.runtime.getURL('pages/history/history.html') });
   window.close();
 });
 
