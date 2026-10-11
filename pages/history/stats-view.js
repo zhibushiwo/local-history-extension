@@ -103,8 +103,10 @@ function renderComparison(records) {
     r => r.timestamp >= yesterdayStart && r.timestamp < todayStart,
   ).length;
 
-  const dow = now.getDay();
-  const weekStart = todayStart - dow * 86400000;
+  const dow = now.getDay(); // 0=周日
+  // 一周从周一开始算（国内习惯）：周一=1 ... 周日=7
+  const dowMon = dow === 0 ? 7 : dow;
+  const weekStart = todayStart - (dowMon - 1) * 86400000;
   const lastWeekStart = weekStart - 7 * 86400000;
 
   const thisWeekCount = records.filter(r => r.timestamp >= weekStart).length;
