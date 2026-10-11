@@ -1,7 +1,7 @@
 # 我的历史记录扩展 — 功能清单（全部已实现）
 
 Chrome MV3 扩展，个人私用（单机、单用户），独立 IndexedDB 存储浏览历史。
-**2026-10-11 完成模块化架构重构**（功能与数据模型零变化）：`lib/`（db / recorder / dwell / search / export / settings / utils）、`background/service-worker.js`（事件接线）、`pages/history/`（主页面，单页双 Tab）、`pages/settings/`（设置页）、`popup/`（快捷入口）、`styles/base.css`（公共样式）。
+**2026-10-11 完成模块化架构重构**（功能与数据模型零变化）：`lib/`（db / recorder / dwell / search / search-behavior / site-name / export / settings / utils）、`background/service-worker.js`（事件接线）、`pages/history/`（主页面，单页双 Tab）、`pages/settings/`（设置页）、`popup/`（快捷入口）、`styles/base.css`（公共样式）。同日完成**暖色系换肤**（浅色 token 取自同源项目，暗色为自配的同色相暖褐版）与**统计页增强**（见「统计页增强」章节）。
 
 **实现状态：17 项待办全部完成（2026-10-06）**，本文档转为功能/设计参考。Backlog 2 项未实现。
 
@@ -13,7 +13,9 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - `lib/recorder.js`：URL 归一化、访问去重状态机、`recordTab`/无痕分流、`handleTabUpdated` debounce、`locateRecord`（供 dwell 定位记录）
 - `lib/dwell.js`：停留时长纯逻辑 + 控制器工厂（chrome API 全部依赖注入，可在 Node 里单测）
 - `lib/settings.js`：设置中心，`settings` 键存 `chrome.storage.local`，`saveSettings(patch)` 局部合并；已参数化 `recordDwell` / `idleThresholdSec` / `pageSize` / `backupStep`
-- `lib/search.js` / `lib/export.js` / `lib/utils.js`：搜索解析匹配 / 导出构建 / 通用纯函数
+- `lib/search.js` / `lib/search-behavior.js` / `lib/site-name.js` / `lib/export.js` / `lib/utils.js`：搜索语法解析 / 搜索行为分析（引擎 URL→关键词）/ 站点名推导 / 导出构建 / 通用纯函数
+- 快捷键 Ctrl+Shift+H（Mac Command+Shift+H）打开历史页（manifest `commands` + SW 监听）
+- 视觉：设计 token 全在 `styles/base.css`（--accent 陶土橙 #d97757 系），浅色抄自留存扩展、暗色自配；图表 Canvas 配色收敛在 `stats-view.js` 的 `chartPalette()`；热力图色阶用主色透明度阶梯（不再是 GitHub 绿）
 - `pages/history/`：`history.js`（状态+绑定+列表渲染，~1440 行）+ `stats-view.js`（统计渲染，数据显式传参）
 - `popup/`：总记录 / 今日访问 / 今日停留 + 暂停记录开关（与 `recordingPaused` 联动）
 
@@ -162,7 +164,18 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 ## Backlog（未实现）
 
 - **#J 手动暗色模式三态切换**（跟随/亮/暗）
-- **#K 快捷键打开历史页**：`commands` API，如 Alt+H
+
+---
+
+## 统计页增强（2026-10-11，功能抄自留存扩展）
+
+- **热力图升级**：次数/时长双指标 + 90/180/365/全部范围切换（分段控件），**绝对分档阈值**（可调常量在 `stats-view.js` 的 `HEATMAP_THRESHOLDS`：次数 30/80/150/300，时长 30m/1h/2h/4h），格子尺寸自适应容器、月份/星期标签、未来日期置灰不可点。数据仍基于 `allRecords`（#C 决策不变），**范围受顶部筛选约束**（"全部"档=当前筛选范围全量）
+- **每日停留时长趋势图**：橄榄绿折线，跟随「访问趋势」的 30/半年/一年档位（同一组 tab 联动两图）；折线绘制抽成通用 `drawLineChart(series, opts)`
+- **KPI 卡 8 张**：新增总停留、日均停留（分母 = 范围内有停留记录的天数）
+- **新榜**：访问最多的页面 Top 10（按 visitCount 加权）；页面平均停留 Top 10（标题+域名合并展示，平均每次 = 总时长 ÷ visitCount）
+- **搜索行为**：从 Bing/Google/百度/搜狗/DDG 结果页 URL 解析关键词（`lib/search-behavior.js`），清洗 `-site:` 等语法；**10 分钟滑动窗口去重**（同关键词相邻间隔都在窗口内则持续合并——翻页后超窗重搜也会被并入，是原样移植的既定语义）；日均分母 = 范围内首尾记录跨度天数；站内搜索不计入
+- **站点名称**：自动推导（`lib/site-name.js`：分隔符截断、取最短 URL≈首页的标题、≤20 字、同名多域名弃用）+ 用户别名（右键或点击 Top 榜站点行改，存 `settings.siteNames`）。注意 B 站这类标题（`~-` 无空格连字符）推不出名，回退显示域名
+- **快捷键**：Ctrl+Shift+H / Mac Command+Shift+H 打开历史页（Backlog #K 已还）
 
 ---
 
