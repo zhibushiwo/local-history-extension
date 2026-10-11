@@ -3,7 +3,7 @@
 Chrome MV3 扩展，个人私用（单机、单用户），独立 IndexedDB 存储浏览历史。
 **2026-10-11 完成模块化架构重构**（功能与数据模型零变化）：`lib/`（db / recorder / dwell / search / search-behavior / site-name / export / settings / utils）、`background/service-worker.js`（事件接线）、`pages/history/`（主页面，单页双 Tab，含设置弹窗）、`popup/`（快捷入口）、`styles/base.css`（公共样式）。同日完成**暖色系换肤**（浅色 token 取自同源项目，暗色为自配的同色相暖褐版）与**统计页增强**（见「统计页增强」章节）。
 
-**实现状态：17 项待办全部完成（2026-10-06）**，本文档转为功能/设计参考。Backlog 2 项未实现。
+**实现状态：17 项待办全部完成（2026-10-06）**，本文档转为功能/设计参考。Backlog 1 项未实现。
 
 ## 架构（2026-10-11 重构后）
 
