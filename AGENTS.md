@@ -156,7 +156,7 @@ ES modules，无构建步骤。DB schema（v3）与数据模型不变，旧数�
 - **追踪控制器**（`lib/dwell.js`，SW 注入 chrome API）：所有事件（切标签/窗口焦点/idle/URL 变化/心跳/设置变更）收敛为单一 `refresh()` 入口 = 结算旧段 + 按"当前该不该计时"重开或清除，一律以"现在"为新基线，绝不按历史时间戳补算
   - 活跃段 `{tabId, normalized, incognito, storeName, recordId, startedAt}` 存 `chrome.storage.session`（**SW 被杀不丢段**）；`recordId` 开段时经 `recorder.locateRecord` 预解析（内存 `urlState` 优先，回退查最近 24h），结算时若为空再兜底定位一次
   - **心跳 alarm（2026-10-11 升级）**：计时期间挂 1 分钟 `dwell-flush` alarm（自愈式增删），SW 静默被回收后长会话按分钟增量落库不丢失（旧版会被 2h 封顶砍掉超出部分）
-  - **精度约定（2026-10-11 升级）**：单次结算增量封顶 90s——合盖睡眠 8 小时只记 90s，截断部分有意丢弃；跨本地午夜按天拆分落库（`addDwellTime` 第 4 参 `dayKey`）；<5s 段丢弃；idle 阈值可设置（默认 60s，冷启动必须重设 `setDetectionInterval`）；窗口 minimized/locked-fullscreen 不计时；**后台标签不计时**（听歌/画中画不计入，有意设计）；暂停记录（recordingPaused）不停表（与旧版一致）
+  - **精度约定（2026-10-11 升级）**：单次结算增量封顶 90s——合盖睡眠 8 小时只记 90s，截断部分有意丢弃；跨本地午夜按天拆分落库（`addDwellTime` 第 4 参 `dayKey`）；<5s 段丢弃；idle 阈值可设置（默认 60s，冷启动必须重设 `setDetectionInterval`）；窗口 minimized/locked-fullscreen 不计时；**后台标签不计时**（听歌/画中画不计入，有意设计）；**tab.audible 豁免空闲停表**（正在出声的标签页即使系统 idle 也计时——实测看视频 2 分钟只记 61s 的根因即 60s 无输入被判 idle，2026-10-11 修复；盲区：静音播放不置 audible）；暂停记录（recordingPaused）不停表（与旧版一致）
 - **UI**：条目 meta「⏱ 3 分 12 秒」（dwellTotalOf 汇总 dwellByDay）；统计卡片「今日停留」（当天的 dwellByDay 求和）；「停留时间最长的网站 Top 10」榜
 - **导出**：MD/HTML 显示格式化时长，CSV 加「停留(秒)」列，JSON 含 dwellByDay；导入保留
 - 权限：`idle` / `alarms`；`chrome.storage.session` 无需权限

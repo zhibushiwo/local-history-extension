@@ -53,6 +53,9 @@ eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'minimi
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'locked-fullscreen', idleState: 'active' }), false, '锁定全屏不计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'active' }), false, '失焦不计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'normal', idleState: 'idle' }), false, '系统空闲不计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'normal', idleState: 'idle', audible: true }), true, '系统空闲但标签出声（看视频）照样计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'idle', audible: true }), false, '出声但失焦仍不计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'minimized', idleState: 'idle', audible: true }), false, '出声但最小化仍不计时');
 eq(shouldCount({ url: 'chrome://version', windowFocused: true, windowState: 'normal', idleState: 'active' }), false, 'chrome 页不计时');
 
 // ── 控制器 ──

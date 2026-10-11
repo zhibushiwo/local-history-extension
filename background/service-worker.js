@@ -66,6 +66,7 @@ const dwell = createDwellController({
         incognito: !!tab.incognito,
         windowFocused,
         windowState,
+        audible: !!tab.audible, // 正在出声（视频/音频）：空闲判定豁免
       };
     } catch (e) {
       return null;
