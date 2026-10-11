@@ -35,5 +35,14 @@
   "options_ui": {
     "page": "pages/settings/settings.html",
     "open_in_tab": true
+  },
+  "commands": {
+    "open-history": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H"
+      },
+      "description": "打开历史记录页"
+    }
   }
 }
