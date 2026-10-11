@@ -12,7 +12,8 @@
     "idle"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background/service-worker.js",
+    "type": "module"
   },
   "action": {
     "default_title": "打开我的历史记录",
@@ -30,7 +31,7 @@
     "128": "icons/icon128.png"
   },
   "options_ui": {
-    "page": "history.html",
+    "page": "pages/history/history.html",
     "open_in_tab": true
   }
 }

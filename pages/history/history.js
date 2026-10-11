@@ -1,3 +1,15 @@
+// ==================== 模块导入 ====================
+import * as MyHistoryDB from '../../lib/db.js';
+import {
+  escapeHtml,
+  getDateKey,
+  formatDateTitle,
+  formatDateTime,
+  dwellTotalOf,
+  formatDwell,
+  formatDwellCompact,
+} from '../../lib/utils.js';
+
 // ==================== DOM ====================
 const listEl = document.getElementById('list');
 const totalEl = document.getElementById('total');
@@ -93,7 +105,7 @@ let currentView = 'list';
 let dayFilter = null; // 「仅看某天」覆盖层（dateKey），不影响时间范围
 let lastRecordedSearch = null;
 let incognitoView = false;
-const INC_STORE = 'history_incognito';
+const INC_STORE = MyHistoryDB.INCOGNITO_STORE;
 const selectedKeys = new Set(); // 批量选择，key = id|timestamp
 const collapsedDays = new Set(); // 折叠的日期（dateKey），重渲染后保持
 
@@ -107,20 +119,8 @@ function storeNameFor(ts) {
 }
 
 // ==================== 工具 ====================
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(
-    /[&<>"']/g,
-    m =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-      })[m],
-  );
-}
+// escapeHtml / getDateKey / formatDateTitle / formatDateTime / dwellTotalOf /
+// formatDwell / formatDwellCompact 来自 lib/utils.js
 
 function getFaviconUrl(record) {
   // 1) 优先用记录里保存的原始图标（http/https/data URI）
@@ -134,55 +134,6 @@ function getFaviconUrl(record) {
     );
   }
   return '';
-}
-
-function getDateKey(ts) {
-  const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function formatDateTitle(dateKey) {
-  const todayKey = getDateKey(Date.now());
-  const yesterdayKey = getDateKey(Date.now() - 86400000);
-  if (dateKey === todayKey) return '今天';
-  if (dateKey === yesterdayKey) return '昨天';
-  const [y, m, d] = dateKey.split('-');
-  return `${y}年${parseInt(m, 10)}月${parseInt(d, 10)}日`;
-}
-
-function formatDateTime(ts) {
-  const d = new Date(ts);
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-// ==================== 停留时长 ====================
-function dwellTotalOf(r) {
-  if (r.dwellByDay && typeof r.dwellByDay === 'object') {
-    let t = 0;
-    for (const k in r.dwellByDay) t += r.dwellByDay[k] || 0;
-    return t;
-  }
-  return r.dwellTime || 0;
-}
-
-function formatDwell(s) {
-  if (!s || s <= 0) return '';
-  if (s < 60) return s + ' 秒';
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return m ? `${h} 时 ${m} 分` : `${h} 时`;
-  return `${m} 分 ${s % 60} 秒`;
-}
-
-function formatDwellCompact(s) {
-  if (!s || s <= 0) return '0';
-  const h = s / 3600;
-  if (h >= 1) return h.toFixed(1) + ' 时';
-  return Math.round(s / 60) + ' 分';
 }
 
 // ==================== 时间范围 ====================

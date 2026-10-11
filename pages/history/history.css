@@ -1,28 +1,4 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --bg: #f5f6f8;
-  --panel: #ffffff;
-  --text: #1f2328;
-  --text-secondary: #656d76;
-  --border: #d0d7de;
-  --accent: #0969da;
-  --danger: #cf222e;
-  --hover: #f3f4f6;
-}
-
-body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
+/* history.css — 历史页专属样式；变量/按钮/toast 等公共部分在 styles/base.css */
 
 .topbar {
   position: sticky;
@@ -85,37 +61,6 @@ body {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.btn {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-
-.btn:hover {
-  background: var(--hover);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn.danger {
-  color: var(--danger);
-  border-color: rgba(207, 34, 46, 0.4);
-}
-
-.btn.danger:hover {
-  background: rgba(207, 34, 46, 0.1);
 }
 
 .filters {
@@ -214,31 +159,6 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
-}
-
-.btn-small {
-  padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.btn-small:hover {
-  background: var(--hover);
-}
-
-.btn-small.primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.btn-small.primary:hover {
-  background: #0860c4;
 }
 
 .list {
@@ -420,43 +340,11 @@ body {
   color: var(--accent);
 }
 
-.btn-small.danger-small {
-  color: var(--danger);
-  border-color: rgba(207, 34, 46, 0.4);
-}
-
-.btn-small.danger-small:hover {
-  background: rgba(207, 34, 46, 0.1);
-}
-
 .empty {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-secondary);
   font-size: 14px;
-}
-
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: #1f2328;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.2s,
-    transform 0.2s;
-  z-index: 100;
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 
 /* ===== 备注编辑弹层 ===== */
@@ -1128,18 +1016,8 @@ body.incognito-mode .normal-only {
   transform: translateY(-3px);
 }
 
-/* ===== 深色模式 ===== */
+/* ===== 深色模式（变量在 base.css） ===== */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --text: #e6edf3;
-    --text-secondary: #8b949e;
-    --border: #30363d;
-    --accent: #58a6ff;
-    --danger: #f85149;
-    --hover: #21262d;
-  }
   .item-favicon {
     background: #ffffff;
   }
