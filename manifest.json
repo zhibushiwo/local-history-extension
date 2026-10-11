@@ -9,7 +9,8 @@
     "storage",
     "unlimitedStorage",
     "favicon",
-    "idle"
+    "idle",
+    "alarms"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

@@ -1,143 +1,123 @@
 // Service Worker：只做 chrome 事件接线。
-// 记录逻辑在 lib/recorder.js，数据层在 lib/db.js，停留时长见下方 dwell 区块。
+// 记录逻辑在 lib/recorder.js，停留时长在 lib/dwell.js，数据层在 lib/db.js
 import * as MyHistoryDB from '../lib/db.js';
 import {
-  recordTab,
   handleTabUpdated,
   clearTabState,
-  urlState,
   normalizeUrl,
-  isRecordableUrl,
+  locateRecord,
 } from '../lib/recorder.js';
+import { getSettings } from '../lib/settings.js';
+import { createDwellController } from '../lib/dwell.js';
 
-// ==================== 停留时长追踪 ====================
-// 活跃段存 chrome.storage.session（SW 被杀不丢段），离开时结算累加到记录
-const DWELL_IDLE_SEC = 60;        // 空闲判定：60s 无输入停表
-const DWELL_MIN_SEG = 5;          // <5s 的段丢弃（切标签抖动）
-const DWELL_MAX_SEG = 2 * 3600;   // 单段封顶 2 小时（崩溃等极端情况）
+// ─────────────────────────────────────────────────────────────
+// 停留时长采集
+// MV3 的 SW 静默约 30s 被回收 → 计时期间挂 1 分钟心跳 alarm（alarm 能唤醒 SW），
+// 长会话按分钟增量落库不丢失；合盖睡眠产生的超长区间按增量上限截断丢弃，
+// 绝不按墙钟时间补算（否则合盖 8 小时会被记成 2 小时浏览）。
+// 设计细节见 lib/dwell.js 头注释。
+// ─────────────────────────────────────────────────────────────
+const DWELL_ALARM = 'dwell-flush';
 
-try {
-  chrome.idle.setDetectionInterval(DWELL_IDLE_SEC);
-} catch (e) {
-  console.error('idle API 不可用:', e);
-}
-
-async function dwellGetSeg() {
-  try {
-    const res = await chrome.storage.session.get('dwellSegment');
-    return res.dwellSegment || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function dwellSetSeg(seg) {
-  try {
-    if (seg) await chrome.storage.session.set({ dwellSegment: seg });
-    else await chrome.storage.session.remove('dwellSegment');
-  } catch (e) {}
-}
-
-// 开段：tab 成为前台活跃标签
-async function dwellStart(tab, now) {
-  if (!tab || !tab.url || !isRecordableUrl(tab.url)) return;
-  await dwellSetSeg({
-    tabId: tab.id,
-    normalized: normalizeUrl(tab.url),
-    startedAt: now,
-    incognito: !!tab.incognito,
-  });
-}
-
-// 结算：把当前段累加到对应记录（按归一化 URL 定位，查不到则丢弃）
-async function dwellStop(now) {
-  const seg = await dwellGetSeg();
-  if (!seg) return;
-  await dwellSetSeg(null);
-  let seconds = Math.floor((now - seg.startedAt) / 1000);
-  if (seconds < DWELL_MIN_SEG) return;
-  if (seconds > DWELL_MAX_SEG) seconds = DWELL_MAX_SEG;
-
-  try {
-    let storeName = null;
-    let recordId = null;
-    if (seg.incognito) {
-      const recs = await MyHistoryDB.getIncognitoHistory(now - 86400000, now);
-      const rec = recs.find((r) => normalizeUrl(r.url) === seg.normalized);
-      if (rec) {
-        storeName = MyHistoryDB.INCOGNITO_STORE;
-        recordId = rec.id;
-      }
-    } else {
-      const st = urlState.get(seg.normalized);
-      if (st) {
-        storeName = st.storeName;
-        recordId = st.recordId;
-      } else {
-        const recs = await MyHistoryDB.getHistoryByRange(now - 86400000, now);
-        const rec = recs.find((r) => normalizeUrl(r.url) === seg.normalized);
-        if (rec) {
-          storeName = MyHistoryDB.storeNameForTimestamp(rec.timestamp);
-          recordId = rec.id;
+const dwell = createDwellController({
+  session: chrome.storage.session,
+  getSettings,
+  setIdleThreshold(sec) {
+    // setDetectionInterval 只对当前 SW 实例生效，每次冷启动/改设置都必须重设
+    try {
+      chrome.idle.setDetectionInterval(sec);
+    } catch (e) {}
+  },
+  addDwellTime: (storeName, recordId, seconds, dayKey) =>
+    MyHistoryDB.addDwellTime(storeName, recordId, seconds, dayKey),
+  locateRecord,
+  async syncAlarm(active) {
+    // 心跳只在计时期间存在；alarm 在 SW 终止后依然存活，自愈式增删
+    try {
+      const exists = await new Promise((resolve) => {
+        try {
+          chrome.alarms.get(DWELL_ALARM, (a) => resolve(!!a));
+        } catch (e) {
+          resolve(false);
         }
-      }
+      });
+      if (active && !exists) chrome.alarms.create(DWELL_ALARM, { periodInMinutes: 1 });
+      else if (!active && exists) chrome.alarms.clear(DWELL_ALARM);
+    } catch (e) {}
+  },
+  async getActiveContext() {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        lastFocusedWindow: true,
+      });
+      if (!tab || !tab.url) return null;
+      let windowState = 'normal';
+      let windowFocused = false;
+      try {
+        const win = await chrome.windows.get(tab.windowId);
+        windowState = win.state;
+        windowFocused = !!win.focused;
+      } catch (e) {}
+      return {
+        tabId: tab.id,
+        url: tab.url,
+        normalized: normalizeUrl(tab.url),
+        incognito: !!tab.incognito,
+        windowFocused,
+        windowState,
+      };
+    } catch (e) {
+      return null;
     }
-    if (!storeName || recordId == null) return;
-    await MyHistoryDB.addDwellTime(storeName, recordId, seconds);
-  } catch (e) {
-    console.error('结算停留时长失败:', e);
-  }
-}
-
-// 恢复活跃：给焦点窗口的活跃 tab 开新段
-async function dwellResumeActive() {
-  try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
+  },
+  getIdleState(thresholdSec) {
+    // idle.queryState 的 Promise 形式需要 Chrome 116+，统一走回调形式
+    return new Promise((resolve) => {
+      try {
+        chrome.idle.queryState(thresholdSec, (state) => resolve(state || 'active'));
+      } catch (e) {
+        resolve('active');
+      }
     });
-    if (tab) await dwellStart(tab, Date.now());
-  } catch (e) {}
-}
-
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
-  await dwellStop(Date.now());
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    await dwellStart(tab, Date.now());
-  } catch (e) {
-    // 标签可能已被关闭
-  }
+  },
 });
 
-chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  await dwellStop(Date.now());
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return; // 失焦：停表
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, windowId });
-    if (tab) await dwellStart(tab, Date.now());
-  } catch (e) {}
-});
+// 冷启动初始化：重设空闲阈值 + 以当前时间重建基线（不按历史时间戳补算）
+dwell
+  .loadSettings()
+  .then(() => dwell.refresh(Date.now()))
+  .catch(() => {});
 
-chrome.idle.onStateChanged.addListener(async (state) => {
-  await dwellStop(Date.now());
-  if (state === 'active') await dwellResumeActive();
+chrome.tabs.onActivated.addListener(() => dwell.refresh(Date.now()));
+
+chrome.windows.onFocusChanged.addListener(() => dwell.refresh(Date.now()));
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  clearTabState(tabId);
+  dwell.refresh(Date.now());
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // 活跃标签 URL 变化（SPA 路由）：停留段切到新 URL
-  if (changeInfo.url && tab && tab.active) {
-    dwellStop(Date.now()).then(() => dwellStart(tab, Date.now()));
-  }
-
+  if (changeInfo.url && tab && tab.active) dwell.refresh(Date.now());
   handleTabUpdated(tabId, changeInfo, tab);
 });
 
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-  clearTabState(tabId);
-  // 关闭的是正在计时的标签：结算
-  const seg = await dwellGetSeg();
-  if (seg && seg.tabId === tabId) await dwellStop(Date.now());
+chrome.idle.onStateChanged.addListener(() => dwell.refresh(Date.now()));
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === DWELL_ALARM) dwell.refresh(Date.now());
+});
+
+// 设置变化（关闭/开启停留记录、改空闲阈值）热生效
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) {
+    dwell
+      .loadSettings()
+      .then(() => dwell.refresh(Date.now()))
+      .catch(() => {});
+  }
 });
 
 chrome.action.onClicked.addListener(() => {
