@@ -198,6 +198,54 @@ console.log('controller:');
   eq(dwellWrites.length, 1, '结算时兜底定位成功');
   eq(dwellWrites[0].recordId, 7, '定位到新记录');
 }
+{
+  // 看门狗：空闲停表时 alarm 保留，声音恢复可自动续计
+  const m = makeDeps({
+    settings: { recordDwell: true, idleThresholdSec: 60 },
+    context: { ...CTX, audible: false },
+    idleState: 'idle',
+    records: { 'a.com/x': REC },
+  });
+  const c = createDwellController(m.deps);
+  await c.loadSettings();
+  await c.refresh(Date.now());
+  eq(m.alarmOn, true, '空闲停表但 alarm 保留（看门狗）');
+  eq(m.dwellWrites.length, 0, '无出声不计时长');
+}
+{
+  // recordDwell=false：不计时且 alarm 撤掉（不留看门狗空转）
+  const m = makeDeps({
+    settings: { recordDwell: false, idleThresholdSec: 60 },
+    context: { ...CTX, audible: false },
+    idleState: 'idle',
+    records: { 'a.com/x': REC },
+  });
+  const c = createDwellController(m.deps);
+  await c.loadSettings();
+  await c.refresh(Date.now());
+  eq(m.alarmOn, false, '功能关闭时 alarm 撤掉');
+}
+{
+  // audible 去抖：开段时出声，随后静音+idle 落在 120s 宽限内 → 不断表
+  const m = makeDeps({
+    settings: { recordDwell: true, idleThresholdSec: 60 },
+    context: { ...CTX, audible: true },
+    idleState: 'active',
+    records: { 'a.com/x': REC },
+  });
+  const c = createDwellController(m.deps);
+  await c.loadSettings();
+  const t0 = new Date(2026, 9, 11, 10, 0, 0).getTime();
+  await c.refresh(t0); // audible → lastAudibleAt = t0
+  m.env.idleState = 'idle';
+  m.env.context = { ...CTX, audible: false };
+  await c.refresh(t0 + 60000); // 60s < 120s 宽限
+  eq(m.dwellWrites[0].seconds, 60, '静音间隙（<120s 宽限）不断表');
+  await c.refresh(t0 + 200000); // 超过宽限 → 停表
+  const last = m.dwellWrites[m.dwellWrites.length - 1];
+  eq(last.seconds, 90, '超过宽限后停表（本次结算封顶 90s）');
+  eq(m.alarmOn, true, '停表后 alarm 保留（看门狗）');
+}
 
 console.log(failed === 0 ? '全部通过' : `${failed} 个用例失败`);
 process.exit(failed === 0 ? 0 : 1);
