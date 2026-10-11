@@ -51,11 +51,13 @@ eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'maximi
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'fullscreen', idleState: 'active' }), true, '全屏算正常观看');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'minimized', idleState: 'active' }), false, '最小化不计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'locked-fullscreen', idleState: 'active' }), false, '锁定全屏不计时');
-eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'active' }), false, '失焦不计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'active' }), false, '失焦且无声不计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'active', audible: true }), true, '分屏/副屏：失焦但媒体在播照常计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'idle', audible: true }), true, '失焦 + 有声 + 系统空闲（分屏挂机看）照常计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'normal', idleState: 'idle' }), false, '系统空闲不计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'normal', idleState: 'idle', audible: true }), true, '系统空闲但标签出声（看视频）照样计时');
-eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'normal', idleState: 'idle', audible: true }), false, '出声但失焦仍不计时');
 eq(shouldCount({ url: 'https://a.com', windowFocused: true, windowState: 'minimized', idleState: 'idle', audible: true }), false, '出声但最小化仍不计时');
+eq(shouldCount({ url: 'https://a.com', windowFocused: false, windowState: 'minimized', idleState: 'active', audible: true }), false, '最小化即不可见，有声也不计时');
 eq(shouldCount({ url: 'chrome://version', windowFocused: true, windowState: 'normal', idleState: 'active' }), false, 'chrome 页不计时');
 
 // ── 控制器 ──
