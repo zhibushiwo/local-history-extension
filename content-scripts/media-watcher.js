@@ -1,17 +1,24 @@
 // 媒体播放状态上报（content script，注入视频站点白名单，all_frames）
-// 检测本 frame 内 <video>/<audio> 是否在播放，变化即报、播放中定期心跳。
-// 这是 tab.audible 的可靠替代：直接读媒体元素状态，静音播放也能覆盖。
+// "有效播放" = 未静音 + 未暂停 + 播放位置在前进。
+// 必须未静音：页面里自动播放的静音预览视频（如搜索结果卡片）不是用户在看的
+// 内容，若计入会违反"有声音才算时间"的语义，且其缓冲抖动会造成消息风暴。
+// currentTime 在前进：排除 readyState 反复横跳导致的假播放。
 (function () {
   'use strict';
 
   let lastSent = null;
   let tick = 0;
+  const lastTime = new Map(); // 媒体元素 -> 上次 currentTime
 
   function anyPlaying() {
+    let playing = false;
     for (const m of document.querySelectorAll('video, audio')) {
-      if (!m.paused && !m.ended && m.readyState > 2) return true;
+      const t = m.currentTime;
+      const prev = lastTime.get(m);
+      if (!m.muted && !m.paused && !m.ended && t !== prev) playing = true;
+      lastTime.set(m, t);
     }
-    return false;
+    return playing;
   }
 
   function send(playing) {
@@ -28,8 +35,8 @@
     if (playing !== lastSent) {
       lastSent = playing;
       send(playing);
-    } else if (playing && tick % 6 === 0) {
-      send(true); // 播放中每 ~30s 心跳：SW 被回收重启后状态能自愈
+    } else if (playing && tick % 4 === 0) {
+      send(true); // 播放中 ~20s 心跳：持续唤醒 SW，结算增量远小于 90s 截断线
     }
   }
 
@@ -37,11 +44,6 @@
   ['play', 'pause', 'ended', 'emptied', 'loadeddata'].forEach(ev =>
     document.addEventListener(ev, report, true),
   );
-  // 播放期间无条件 20s 心跳：持续唤醒 SW，让结算增量始终远小于 90s 截断线
-  //（系统空闲时 Chrome 会大幅延迟 alarm，若只靠 alarm 结算会按封顶丢一半时间）
-  setInterval(() => {
-    if (anyPlaying()) send(true);
-  }, 20000);
   setInterval(report, 5000);
   report();
   console.debug('[media-watcher] loaded, playing =', anyPlaying());
