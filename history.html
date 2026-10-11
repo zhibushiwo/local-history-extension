@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的历史记录</title>
+<link rel="stylesheet" href="history.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🕘</span>
+    <h1>我的历史记录</h1>
+    <span class="total" id="total"></span>
+  </div>
+    <div class="search-wrap">
+      <input id="search" type="search"
+        placeholder="搜索…  支持 site:  note:  after:  before:  title:  url:  /正则/"
+        autocomplete="off" spellcheck="false">
+      <button id="btn-help" class="help-btn" title="搜索语法">?</button>
+      <div id="help-popover" class="help-popover" hidden>
+        <h4>搜索语法速查</h4>
+        <table class="help-table">
+          <tr><td><code>site:</code></td><td>限定域名 · <code>site:bilibili.com</code></td></tr>
+          <tr><td><code>after:</code></td><td>起始日期 · <code>after:2026-09-01</code></td></tr>
+          <tr><td><code>before:</code></td><td>结束日期 · <code>before:2026-10-01</code></td></tr>
+          <tr><td><code>title:</code></td><td>只搜标题 · <code>title:教程</code></td></tr>
+          <tr><td><code>url:</code></td><td>只搜网址 · <code>url:api</code></td></tr>
+          <tr><td><code>note:</code></td><td>只搜备注 · <code>note:发票</code></td></tr>
+          <tr><td><code>/正则/</code></td><td>正则匹配 · <code>/switch.*格式/i</code></td></tr>
+          <tr><td>普通文字</td><td>全字段匹配（含备注），空格分隔多个词</td></tr>
+        </table>
+        <p class="help-tip">可组合：<code>site:bilibili.com after:2026-09-01 教程</code></p>
+      <p class="help-tip">👻 无痕视图：需先在 chrome://extensions 中允许本扩展「在无痕模式下启用」；密码仅防偷瞄，并非加密保护。</p>
+      </div>
+      <div id="recent-pop" class="recent-pop" hidden></div>
+    </div>
+  <div class="top-actions">
+    <div class="dropdown">
+      <button id="btn-export" class="btn">导出 ▾</button>
+      <div id="export-menu" class="dropdown-menu" hidden>
+        <button data-format="json">JSON</button>
+        <button data-format="markdown">Markdown</button>
+        <button data-format="csv">CSV</button>
+        <button data-format="html">HTML</button>
+      </div>
+    </div>
+    <div class="dropdown">
+      <button id="btn-searches" class="btn">常用搜索 ▾</button>
+      <div id="searches-menu" class="dropdown-menu" hidden></div>
+    </div>
+    <div class="dropdown">
+      <button id="btn-more" class="btn">更多 ▾</button>
+      <div id="more-menu" class="dropdown-menu" hidden>
+        <button type="button" id="more-incognito">👻 无痕视图</button>
+        <button type="button" id="more-import" class="normal-only">📁 导入</button>
+        <button type="button" id="more-sync-all" class="normal-only">🔄 同步 Chrome 全部历史</button>
+        <button type="button" id="more-sync-month" class="normal-only">🔄 同步 Chrome 最近 30 天</button>
+        <button type="button" id="more-merge" class="normal-only">🔍 检测重复记录</button>
+        <button type="button" id="more-pause" class="normal-only">⏸ 暂停记录</button>
+        <div class="dropdown-divider normal-only"></div>
+        <button type="button" id="more-clear" class="danger-item normal-only">🗑️ 清空全部</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<input type="file" id="file-input" accept=".json,application/json" hidden>
+
+<div id="backup-banner" class="backup-banner normal-only" hidden>
+  <span id="backup-text" class="backup-text"></span>
+  <div class="backup-actions">
+    <button type="button" id="btn-backup-export" class="btn-small primary">立即导出</button>
+    <button type="button" id="btn-backup-later" class="btn-small">稍后再说</button>
+  </div>
+</div>
+
+<div id="incognito-banner" class="incognito-banner" hidden>
+  <span class="backup-text">👻 无痕视图 — 记录仅保存在本机，除非在无痕视图中手动删除</span>
+  <div class="backup-actions">
+    <button type="button" id="btn-inc-clear" class="btn-small danger-small">清空无痕记录</button>
+    <button type="button" id="btn-inc-exit" class="btn-small">退出</button>
+  </div>
+</div>
+
+<div id="batch-bar" class="batch-bar" hidden>
+  <span class="batch-info">已选 <b id="batch-count">0</b> 条</span>
+  <button type="button" id="btn-select-all" class="btn-small">全选筛选结果</button>
+  <button type="button" id="btn-delete-selected" class="btn-small danger-small">删除选中</button>
+  <button type="button" id="btn-cancel-select" class="btn-small">取消选择</button>
+</div>
+
+<div class="filters">
+  <button class="chip active" data-range="year">今年</button>
+  <button class="chip" data-range="today">今天</button>
+  <button class="chip" data-range="month">最近 30 天</button>
+  <div class="chip date-chip" id="date-range-btn">
+    <span id="date-label">选择日期范围</span>
+    <div class="date-range-popover" id="date-range-popover" hidden>
+      <div class="date-range-row">
+        <label for="custom-start">起始</label>
+        <input type="date" id="custom-start">
+      </div>
+      <div class="date-range-row">
+        <label for="custom-end">结束</label>
+        <input type="date" id="custom-end">
+      </div>
+      <div class="date-range-actions">
+        <button type="button" class="btn-small" id="date-clear">清除</button>
+        <button type="button" class="btn-small primary" id="date-apply">确定</button>
+      </div>
+    </div>
+  </div>
+  <button class="chip" data-range="all">全部</button>
+  <button id="chip-starred" class="chip">⭐ 已收藏</button>
+  <button id="chip-select" class="chip">☑ 选择</button>
+  <button id="chip-day" class="chip" hidden>仅看 <span id="chip-day-label"></span> ✕</button>
+  <div class="view-tabs normal-only">
+    <button type="button" id="tab-list" class="view-tab active">📜 列表</button>
+    <button type="button" id="tab-stats" class="view-tab">📊 统计</button>
+  </div>
+</div>
+
+<section id="stats-panel" class="stats-panel" hidden>
+
+  <div class="stats-cards">
+    <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">总访问</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-today">0</div><div class="stat-label">今日访问</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-domains">0</div><div class="stat-label">独立网站</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-days">0</div><div class="stat-label">活跃天数</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-storage">—</div><div class="stat-label">已用空间</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-dwell-today">—</div><div class="stat-label">今日停留</div></div>
+  </div>
+
+  <div class="stats-comparison" id="stat-comparison"></div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">最近 365 天热力图</h3>
+    <div class="heatmap-wrap">
+      <div id="stat-heatmap" class="heatmap"></div>
+    </div>
+    <div class="heatmap-legend">
+      <span>少</span>
+      <div class="heatmap-day level-0"></div>
+      <div class="heatmap-day level-1"></div>
+      <div class="heatmap-day level-2"></div>
+      <div class="heatmap-day level-3"></div>
+      <div class="heatmap-day level-4"></div>
+      <span>多</span>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-title-row">
+      <h3 class="stats-title">访问趋势</h3>
+      <div class="trend-tabs">
+        <button class="trend-tab active" data-days="30">30 天</button>
+        <button class="trend-tab" data-days="180">半年</button>
+        <button class="trend-tab" data-days="365">一年</button>
+      </div>
+    </div>
+    <div class="trend-chart-wrap">
+      <canvas id="stat-trend"></canvas>
+      <div id="stat-trend-tooltip" class="trend-tooltip" hidden></div>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">时段热力图（星期 × 小时）</h3>
+    <div id="stat-hour-heatmap" class="hour-heatmap"></div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">访问最多的网站 Top 10</h3>
+    <div id="stat-top-domains" class="stat-top-list"></div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">停留时间最长的网站 Top 10</h3>
+    <div id="stat-top-dwell" class="stat-top-list"></div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">24 小时访问分布</h3>
+    <div id="stat-hours" class="stat-hours"></div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">星期分布</h3>
+    <div id="stat-weekdays" class="stat-weekdays"></div>
+  </div>
+
+</section>
+
+<div id="list-view">
+  <main id="list" class="list"></main>
+  <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+  <div id="load-hint" class="load-hint"></div>
+</div>
+
+<div id="pw-modal" class="note-editor-overlay" hidden>
+  <div class="note-editor">
+    <h4 id="pw-title">👻 无痕视图</h4>
+    <div id="pw-sub" class="note-editor-rec">输入密码进入</div>
+    <input type="password" id="pw-input" class="pw-input" autocomplete="new-password">
+    <div id="pw-error" class="pw-error" hidden></div>
+    <div class="note-editor-actions">
+      <button type="button" id="pw-cancel" class="btn-small">取消</button>
+      <button type="button" id="pw-ok" class="btn-small primary">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="note-editor" class="note-editor-overlay" hidden>
+  <div class="note-editor">
+    <h4 id="note-editor-title">添加备注</h4>
+    <div id="note-editor-rec" class="note-editor-rec"></div>
+    <textarea id="note-textarea" maxlength="500"
+      placeholder="为这条记录写点什么…（Ctrl+Enter 保存，Esc 关闭）"></textarea>
+    <div class="note-editor-actions">
+      <button type="button" id="note-cancel" class="btn-small">取消</button>
+      <button type="button" id="note-save" class="btn-small primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<button id="btn-top" class="back-top" title="回到顶部" aria-label="回到顶部">🚀</button>
+
+<script src="db.js"></script>
+<script src="history.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "我的历史记录",
+  "version": "2.0.1",
+  "description": "独立存储的浏览历史，按年分库，支持跨年查询、导入导出、永久保存。",
+  "permissions": [
+    "tabs",
+    "history",
+    "storage",
+    "unlimitedStorage",
+    "favicon",
+    "idle"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "打开我的历史记录",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {
+    "page": "history.html",
+    "open_in_tab": true
+  }
+}
