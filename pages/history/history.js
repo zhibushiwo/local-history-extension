@@ -339,6 +339,10 @@ function render() {
 
   updateLoadHint();
   updateBatchBar();
+
+  // 强制 IO 回报一次当前交集状态，避免折叠/短页面时的补页死锁（见 observer 处注释）
+  observer.unobserve(sentinel);
+  observer.observe(sentinel);
 }
 
 // ==================== 数据加载 ====================
@@ -382,6 +386,10 @@ function applySearch(q) {
 }
 
 // ==================== 无限滚动 ====================
+// IntersectionObserver 只在交集状态变化时触发。日期全部折叠（或结果很少）时页面变短，
+// sentinel 停在缓冲区内且状态不再变化、页面又没有滚动条 → 补页死锁。
+// 因此 render() 末尾统一 unobserve+observe 强制回报一次当前状态，
+// 仍在缓冲区且有余量就继续补页，直到页面被撑出缓冲区（rootMargin 300px）或加载完。
 const observer = new IntersectionObserver(
   entries => {
     if (entries[0].isIntersecting) {
