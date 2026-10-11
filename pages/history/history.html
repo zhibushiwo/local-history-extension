@@ -131,25 +131,32 @@
     <div class="stat-card"><div class="stat-value" id="stat-today">0</div><div class="stat-label">今日访问</div></div>
     <div class="stat-card"><div class="stat-value" id="stat-domains">0</div><div class="stat-label">独立网站</div></div>
     <div class="stat-card"><div class="stat-value" id="stat-days">0</div><div class="stat-label">活跃天数</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-storage">—</div><div class="stat-label">已用空间</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-dwell-total">—</div><div class="stat-label">总停留</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-dwell-avg">—</div><div class="stat-label">日均停留</div></div>
     <div class="stat-card"><div class="stat-value" id="stat-dwell-today">—</div><div class="stat-label">今日停留</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-storage">—</div><div class="stat-label">已用空间</div></div>
   </div>
 
   <div class="stats-comparison" id="stat-comparison"></div>
 
   <div class="stats-section">
-    <h3 class="stats-title">最近 365 天热力图</h3>
+    <div class="stats-title-row">
+      <h3 class="stats-title">活跃热力图</h3>
+      <div class="heatmap-controls">
+        <div class="segmented" id="heatmap-metric">
+          <button data-metric="count" class="active">次数</button>
+          <button data-metric="dwell">时长</button>
+        </div>
+        <div class="segmented" id="heatmap-range">
+          <button data-days="90">90 天</button>
+          <button data-days="180">180 天</button>
+          <button data-days="365" class="active">365 天</button>
+          <button data-days="0">全部</button>
+        </div>
+      </div>
+    </div>
     <div class="heatmap-wrap">
       <div id="stat-heatmap" class="heatmap"></div>
-    </div>
-    <div class="heatmap-legend">
-      <span>少</span>
-      <div class="heatmap-day level-0"></div>
-      <div class="heatmap-day level-1"></div>
-      <div class="heatmap-day level-2"></div>
-      <div class="heatmap-day level-3"></div>
-      <div class="heatmap-day level-4"></div>
-      <span>多</span>
     </div>
   </div>
 
@@ -169,17 +176,40 @@
   </div>
 
   <div class="stats-section">
+    <div class="stats-title-row">
+      <h3 class="stats-title">每日停留时长</h3>
+    </div>
+    <div class="trend-chart-wrap">
+      <canvas id="stat-dwell-trend"></canvas>
+      <div id="stat-dwell-trend-tooltip" class="trend-tooltip" hidden></div>
+    </div>
+    <p class="chart-note">仅统计前台聚焦且窗口可见的标签页；系统空闲即停（长视频/长文阅读会偏低）。</p>
+  </div>
+
+  <div class="stats-section">
     <h3 class="stats-title">时段热力图（星期 × 小时）</h3>
     <div id="stat-hour-heatmap" class="hour-heatmap"></div>
   </div>
 
   <div class="stats-section">
+    <h3 class="stats-title">访问最多的页面 Top 10</h3>
+    <div id="stat-top-pages" class="stat-top-list"></div>
+  </div>
+
+  <div class="stats-section">
     <h3 class="stats-title">访问最多的网站 Top 10</h3>
+    <p class="chart-note-hint">右键站点行可修改显示名</p>
     <div id="stat-top-domains" class="stat-top-list"></div>
   </div>
 
   <div class="stats-section">
+    <h3 class="stats-title">页面平均停留 Top 10</h3>
+    <div id="stat-page-dwell" class="stat-top-list"></div>
+  </div>
+
+  <div class="stats-section">
     <h3 class="stats-title">停留时间最长的网站 Top 10</h3>
+    <p class="chart-note-hint">右键站点行可修改显示名</p>
     <div id="stat-top-dwell" class="stat-top-list"></div>
   </div>
 
@@ -191,6 +221,16 @@
   <div class="stats-section">
     <h3 class="stats-title">星期分布</h3>
     <div id="stat-weekdays" class="stat-weekdays"></div>
+  </div>
+
+  <div class="stats-section">
+    <h3 class="stats-title">搜索行为</h3>
+    <div class="search-kpis">
+      <div><span class="search-kpi-value" id="kpi-search-total">-</span><span class="search-kpi-label">搜索次数</span></div>
+      <div><span class="search-kpi-value" id="kpi-search-avg">-</span><span class="search-kpi-label">日均搜索</span></div>
+    </div>
+    <div id="stat-search-kw" class="kw-list"></div>
+    <p class="chart-note">关键词从搜索结果页 URL 解析（Bing / Google / 百度 / 搜狗 / DuckDuckGo）；同一关键词 10 分钟内的翻页或二次筛选只算一次；站内搜索不计入。</p>
   </div>
 
 </section>
@@ -228,6 +268,17 @@
 </div>
 
 <div id="toast" class="toast"></div>
+
+<div id="alias-pop" class="alias-pop" hidden>
+  <div class="alias-pop-domain" id="alias-pop-domain"></div>
+  <input id="alias-pop-input" class="input" type="text" placeholder="站点名称">
+  <p class="alias-pop-hint">留空保存即恢复自动推导的名称</p>
+  <div class="alias-pop-ops">
+    <button type="button" class="btn-small primary" id="alias-pop-save">保存</button>
+    <button type="button" class="btn-small" id="alias-pop-close">取消</button>
+  </div>
+</div>
+
 <button id="btn-top" class="back-top" title="回到顶部" aria-label="回到顶部">🚀</button>
 
 <script type="module" src="history.js"></script>

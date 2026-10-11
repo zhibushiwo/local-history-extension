@@ -747,7 +747,7 @@
 
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 8px;
 }
@@ -1082,88 +1082,145 @@ body.incognito-mode .normal-only {
   margin-left: auto;
 }
 
-/* ===== 日历热力图 ===== */
+/* ===== 日历热力图（升级版：自适应格子 / 月份标签 / 双指标） ===== */
 .heatmap-wrap {
   overflow-x: auto;
   padding-bottom: 6px;
 }
 
 .heatmap {
-  display: flex;
-  gap: 3px;
-  min-width: max-content;
+  --cell: 14px;
+  --gap: 4px;
+  overflow-x: auto;
   padding: 4px 0;
 }
 
-.heatmap-week {
+.heatmap-controls {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.heatmap-day {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  background: var(--border);
-  cursor: pointer;
-  transition: transform 0.1s;
+.hm-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 28px 0;
+  text-align: center;
+}
+
+.hm-top {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.hm-corner {
+  width: 26px;
   flex-shrink: 0;
 }
 
-.heatmap-day:hover {
-  transform: scale(1.3);
+.hm-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--cell);
+  gap: var(--gap);
 }
 
-.heatmap-day.level-0 {
+.hm-month {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.hm-main {
+  display: flex;
+  gap: 6px;
+}
+
+.hm-weekdays {
+  width: 26px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-rows: repeat(7, var(--cell));
+  gap: var(--gap);
+  font-size: 11px;
+  color: var(--muted);
+  align-items: center;
+}
+
+.hm-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, var(--cell));
+  grid-auto-columns: var(--cell);
+  gap: var(--gap);
+}
+
+.hm-cell {
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 4px;
+  background: var(--border);
+  display: inline-block;
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.hm-cell:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 1.5px var(--text-secondary);
+}
+
+.hm-cell.lv-0 {
   background: var(--border);
 }
-.heatmap-day.level-1 {
+.hm-cell.lv-1 {
   background: rgba(217, 119, 87, 0.3);
 }
-.heatmap-day.level-2 {
+.hm-cell.lv-2 {
   background: rgba(217, 119, 87, 0.52);
 }
-.heatmap-day.level-3 {
+.hm-cell.lv-3 {
   background: rgba(217, 119, 87, 0.74);
 }
-.heatmap-day.level-4 {
+.hm-cell.lv-4 {
   background: var(--accent);
 }
 
-.heatmap-day.today {
-  outline: 1.5px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.heatmap-day.heatmap-empty {
+.hm-cell.is-future {
   background: transparent;
-  cursor: default;
+  pointer-events: none;
 }
 
-.heatmap-day.heatmap-empty:hover {
-  transform: none;
-}
-
-.heatmap-legend {
+.hm-legend {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--muted);
 }
 
-.heatmap-legend .heatmap-day {
+.hm-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hm-scale .hm-cell {
+  width: 11px;
+  height: 11px;
   cursor: default;
 }
 
-.heatmap-legend .heatmap-day:hover {
+.hm-scale .hm-cell:hover {
   transform: none;
-}
-
-.heatmap-legend span {
-  margin: 0 4px;
+  box-shadow: none;
 }
 
 /* ===== 趋势折线图 ===== */
@@ -1324,20 +1381,210 @@ body.incognito-mode .normal-only {
     border-color: rgba(187, 128, 9, 0.4);
     color: #e3b341;
   }
-  .heatmap-day.level-1,
+  .hm-cell.lv-1,
   .hour-heatmap-cell.level-1 {
     background: rgba(224, 139, 109, 0.42);
   }
-  .heatmap-day.level-2,
+  .hm-cell.lv-2,
   .hour-heatmap-cell.level-2 {
     background: rgba(224, 139, 109, 0.62);
   }
-  .heatmap-day.level-3,
+  .hm-cell.lv-3,
   .hour-heatmap-cell.level-3 {
     background: rgba(224, 139, 109, 0.82);
   }
-  .heatmap-day.level-4,
+  .hm-cell.lv-4,
   .hour-heatmap-cell.level-4 {
     background: var(--accent);
+  }
+}
+
+/* ============================================================
+   功能抄移新增（2026-10-11）：页面榜 / 搜索行为 / 站点别名
+   ============================================================ */
+
+/* 榜单副标签（站点名后的域名）与提示 */
+.bar-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chart-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 10px;
+}
+
+.chart-note-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: -6px 0 8px;
+}
+
+/* 页面平均停留列表 */
+.dwell-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px 64px;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dwell-head span:not(:first-child) {
+  text-align: right;
+}
+
+.dwell-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px 64px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.dwell-row:last-child {
+  border-bottom: none;
+}
+
+.dwell-name {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dwell-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dwell-total,
+.dwell-avg {
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dwell-total {
+  color: var(--text);
+}
+
+.dwell-avg {
+  color: var(--muted);
+}
+
+/* 搜索行为 */
+.search-kpis {
+  display: flex;
+  gap: 36px;
+  margin-bottom: 14px;
+}
+
+.search-kpi-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.search-kpi-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.kw-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.kw-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 56px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.kw-row:last-child {
+  border-bottom: none;
+}
+
+.kw-rank {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kw-text {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kw-count {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 站点改名浮层（右键 / 点击 Top 榜站点行触发） */
+.alias-pop {
+  position: fixed;
+  z-index: 80;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.alias-pop[hidden] {
+  display: none;
+}
+
+.alias-pop-domain {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alias-pop-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.alias-pop-ops {
+  display: flex;
+  gap: 8px;
+}
+
+.alias-pop-ops .btn-small {
+  flex: 1;
+}
+
+@media (max-width: 600px) {
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stat-bar-label {
+    width: 100px;
   }
 }

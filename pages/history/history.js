@@ -12,7 +12,7 @@ import {
 import { getSettings, DEFAULT_SETTINGS } from '../../lib/settings.js';
 import { parseSearch, matchesSearch } from '../../lib/search.js';
 import { buildMarkdown, buildCsv, buildHtml, downloadFile } from '../../lib/export.js';
-import { renderStats, renderTrendChart } from './stats-view.js';
+import { renderStats, renderTrendChart, renderDwellTrend } from './stats-view.js';
 
 // ==================== DOM ====================
 const listEl = document.getElementById('list');
@@ -107,6 +107,7 @@ let currentView = 'list';
 let dayFilter = null; // 「仅看某天」覆盖层（dateKey），不影响时间范围
 let lastRecordedSearch = null;
 let incognitoView = false;
+let siteNames = {}; // settings.siteNames 的同一对象引用（stats-view 改名后就地修改并持久化）
 const INC_STORE = MyHistoryDB.INCOGNITO_STORE;
 const selectedKeys = new Set(); // 批量选择，key = id|timestamp
 const collapsedDays = new Set(); // 折叠的日期（dateKey），重渲染后保持
@@ -198,7 +199,7 @@ function setRange(range) {
 
 // ==================== 热力图点击 → 仅看某天（不改时间范围） ====================
 document.getElementById('stat-heatmap').addEventListener('click', e => {
-  const cell = e.target.closest('.heatmap-day[data-date]');
+  const cell = e.target.closest('.hm-cell[data-date]');
   if (!cell) return;
   dayFilter = cell.dataset.date;
   chipDayLabel.textContent = dayFilter;
@@ -228,7 +229,7 @@ function render() {
   if (dayFilter) filtered = filtered.filter(r => getDateKey(r.timestamp) === dayFilter);
   totalEl.textContent = `共 ${allRecords.length} 条，筛选后 ${filtered.length} 条`;
 
-  if (currentView === 'stats') renderStats(filtered, allRecords, currentTrendDays);
+  if (currentView === 'stats') renderStats(filtered, allRecords, currentTrendDays, siteNames);
 
   if (filtered.length === 0) {
     listEl.innerHTML = '<div class="empty">暂无记录</div>';
@@ -396,7 +397,10 @@ document.querySelectorAll('.trend-tab').forEach(tab => {
       .forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTrendDays = Number(tab.dataset.days);
-    if (currentView === 'stats') renderTrendChart(filtered, currentTrendDays);
+    if (currentView === 'stats') {
+      renderTrendChart(filtered, currentTrendDays);
+      renderDwellTrend(filtered, currentTrendDays);
+    }
   });
 });
 
@@ -590,7 +594,7 @@ function setView(view) {
   statsPanel.hidden = view !== 'stats';
   listView.hidden = view !== 'list';
   if (view === 'stats') {
-    renderStats(filtered, allRecords, currentTrendDays);
+    renderStats(filtered, allRecords, currentTrendDays, siteNames);
     updateStorageUsage();
   }
 }
@@ -1433,6 +1437,7 @@ parsedSearch = parseSearch('');
     const s = await getSettings();
     PAGE_SIZE = Number(s.pageSize) || DEFAULT_SETTINGS.pageSize;
     backupStep = Number(s.backupStep) || DEFAULT_SETTINGS.backupStep;
+    siteNames = s.siteNames || {};
   } catch (e) {}
   loadRecords();
   checkBackupReminder();
