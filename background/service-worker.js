@@ -120,10 +120,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('pages/history/history.html') });
-});
-
 chrome.runtime.onInstalled.addListener(() => {
   console.log('我的历史记录扩展已安装 v2（按年分库 + 抖动过滤）');
 });

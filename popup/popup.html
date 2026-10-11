@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的历史记录</title>
+<link rel="stylesheet" href="../styles/base.css">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body class="popup">
+
+<header class="pop-head">
+  <div class="brand">
+    <span class="logo">🕘</span>
+    <h1>我的历史记录</h1>
+  </div>
+  <button type="button" class="icon-btn" id="btn-settings" title="设置">⚙</button>
+</header>
+
+<section class="pop-stats">
+  <div class="stat">
+    <span class="stat-value" id="total">-</span>
+    <span class="stat-label">总记录</span>
+  </div>
+  <div class="stat">
+    <span class="stat-value" id="today">-</span>
+    <span class="stat-label">今日访问</span>
+  </div>
+  <div class="stat">
+    <span class="stat-value" id="dwell">-</span>
+    <span class="stat-label">今日停留</span>
+  </div>
+</section>
+
+<div class="pop-actions">
+  <button type="button" class="btn block" id="btn-pause">⏸ 暂停记录</button>
+  <button type="button" class="btn-small primary block" id="btn-open">打开历史记录</button>
+</div>
+
+<script type="module" src="popup.js"></script>
+</body>
+</html>
