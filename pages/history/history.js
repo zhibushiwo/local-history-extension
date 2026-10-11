@@ -9,6 +9,7 @@ import {
   formatDwell,
   formatDwellCompact,
 } from '../../lib/utils.js';
+import { getSettings, DEFAULT_SETTINGS } from '../../lib/settings.js';
 
 // ==================== DOM ====================
 const listEl = document.getElementById('list');
@@ -70,6 +71,7 @@ const moreSyncMonth = document.getElementById('more-sync-month');
 const moreMerge = document.getElementById('more-merge');
 const morePause = document.getElementById('more-pause');
 const moreClear = document.getElementById('more-clear');
+const moreSettings = document.getElementById('more-settings');
 
 const btnSearches = document.getElementById('btn-searches');
 const searchesMenu = document.getElementById('searches-menu');
@@ -88,7 +90,7 @@ const pwOk = document.getElementById('pw-ok');
 const pwCancel = document.getElementById('pw-cancel');
 
 // ==================== 状态 ====================
-const PAGE_SIZE = 200;
+let PAGE_SIZE = DEFAULT_SETTINGS.pageSize; // 实际值从设置读取（见底部初始化）
 
 let allRecords = [];
 let filtered = [];
@@ -1558,7 +1560,7 @@ chipSelect.addEventListener('click', () => {
 });
 
 // ==================== 备份提醒 / 存储用量 ====================
-const BACKUP_STEP = 10000;
+let backupStep = DEFAULT_SETTINGS.backupStep; // 实际值从设置读取
 
 function formatStorageSize(bytes) {
   const mb = bytes / 1024 / 1024;
@@ -1584,8 +1586,8 @@ async function checkBackupReminder() {
     const stored = await chrome.storage.local.get('lastRemindedThreshold');
     const lastReminded = stored.lastRemindedThreshold || 0;
     const count = await MyHistoryDB.countAll();
-    const threshold = Math.floor(count / BACKUP_STEP) * BACKUP_STEP;
-    if (threshold < BACKUP_STEP || threshold <= lastReminded) return;
+    const threshold = Math.floor(count / backupStep) * backupStep;
+    if (threshold < backupStep || threshold <= lastReminded) return;
 
     const usage = await updateStorageUsage();
     const sizeText = usage > 0 ? `（占用 ${formatStorageSize(usage)}）` : '';
@@ -1956,6 +1958,11 @@ moreClear.addEventListener('click', () => {
   clearAllRecords();
 });
 
+moreSettings.addEventListener('click', () => {
+  moreMenu.hidden = true;
+  chrome.tabs.create({ url: chrome.runtime.getURL('pages/settings/settings.html') });
+});
+
 // ==================== 无痕视图 ====================
 let pwMode = null; // 'verify' | 'set' | 'set-confirm'
 let pwFirstValue = '';
@@ -2125,6 +2132,15 @@ btnTop.addEventListener('click', () => {
 
 // ==================== 初始化 ====================
 parsedSearch = parseSearch('');
-loadRecords();
-checkBackupReminder();
-updateStorageUsage();
+
+(async () => {
+  // 先读设置再首渲染：pageSize / 备份档位运行时可调
+  try {
+    const s = await getSettings();
+    PAGE_SIZE = Number(s.pageSize) || DEFAULT_SETTINGS.pageSize;
+    backupStep = Number(s.backupStep) || DEFAULT_SETTINGS.backupStep;
+  } catch (e) {}
+  loadRecords();
+  checkBackupReminder();
+  updateStorageUsage();
+})();
