@@ -105,36 +105,36 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       mediaPlayingAt.delete(sender.tab.id);
       if (had) console.debug('[dwell] media playing stop, tab', sender.tab.id);
     }
-    dwell.refresh(Date.now());
+    dwell.refresh(Date.now(), 'media-state');
   }
 });
 
 // 冷启动初始化：重设空闲阈值 + 以当前时间重建基线（不按历史时间戳补算）
 dwell
   .loadSettings()
-  .then(() => dwell.refresh(Date.now()))
+  .then(() => dwell.refresh(Date.now(), 'startup'))
   .catch(() => {});
 
-chrome.tabs.onActivated.addListener(() => dwell.refresh(Date.now()));
+chrome.tabs.onActivated.addListener(() => dwell.refresh(Date.now(), 'tab-activated'));
 
-chrome.windows.onFocusChanged.addListener(() => dwell.refresh(Date.now()));
+chrome.windows.onFocusChanged.addListener(() => dwell.refresh(Date.now(), 'window-focus'));
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   clearTabState(tabId);
   mediaPlayingAt.delete(tabId);
-  dwell.refresh(Date.now());
+  dwell.refresh(Date.now(), 'tab-removed');
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // 活跃标签 URL 变化（SPA 路由）：停留段切到新 URL
-  if (changeInfo.url && tab && tab.active) dwell.refresh(Date.now());
+  if (changeInfo.url && tab && tab.active) dwell.refresh(Date.now(), 'url-change');
   handleTabUpdated(tabId, changeInfo, tab);
 });
 
-chrome.idle.onStateChanged.addListener(() => dwell.refresh(Date.now()));
+chrome.idle.onStateChanged.addListener(() => dwell.refresh(Date.now(), 'idle-change'));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === DWELL_ALARM) dwell.refresh(Date.now());
+  if (alarm.name === DWELL_ALARM) dwell.refresh(Date.now(), 'alarm');
 });
 
 // 设置变化（关闭/开启停留记录、改空闲阈值）热生效
@@ -142,7 +142,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.settings) {
     dwell
       .loadSettings()
-      .then(() => dwell.refresh(Date.now()))
+      .then(() => dwell.refresh(Date.now(), 'settings-change'))
       .catch(() => {});
   }
 });
