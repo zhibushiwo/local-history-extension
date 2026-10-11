@@ -20,17 +20,8 @@ import { createDwellController } from '../lib/dwell.js';
 const DWELL_ALARM = 'dwell-flush';
 
 // 媒体播放状态（content script 上报）：tabId -> 最近一次"正在播放"的时间。
-// 内存态即可：SW 重启后 content script 的 ~30s 心跳会自动补上。
+// 内存态即可：SW 重启后 content script 的心跳会自动补上。
 const mediaPlayingAt = new Map();
-
-chrome.runtime.onMessage.addListener((msg, sender) => {
-  if (msg && msg.type === 'MEDIA_STATE' && sender.tab) {
-    if (msg.playing) mediaPlayingAt.set(sender.tab.id, Date.now());
-    else mediaPlayingAt.delete(sender.tab.id);
-    // 播放状态变化立即重估（视频开播/暂停都影响该不该计时）
-    dwell.refresh(Date.now());
-  }
-});
 
 const dwell = createDwellController({
   session: chrome.storage.session,
@@ -99,6 +90,23 @@ const dwell = createDwellController({
       }
     });
   },
+  log: (...args) => console.warn('[dwell]', ...args),
+});
+
+// 播放状态变化立即重估（视频开播/暂停都影响该不该计时）。
+// 注册在 dwell 创建之后，避免冷启动时消息早于模块求值完成。
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg && msg.type === 'MEDIA_STATE' && sender.tab) {
+    const had = mediaPlayingAt.has(sender.tab.id);
+    if (msg.playing) {
+      mediaPlayingAt.set(sender.tab.id, Date.now());
+      if (!had) console.debug('[dwell] media playing start, tab', sender.tab.id);
+    } else {
+      mediaPlayingAt.delete(sender.tab.id);
+      if (had) console.debug('[dwell] media playing stop, tab', sender.tab.id);
+    }
+    dwell.refresh(Date.now());
+  }
 });
 
 // 冷启动初始化：重设空闲阈值 + 以当前时间重建基线（不按历史时间戳补算）

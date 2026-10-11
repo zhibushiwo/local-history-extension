@@ -33,10 +33,16 @@
     }
   }
 
-  // 媒体事件不冒泡，capture 监听可捕获；轮询兜底（SPA 动态创建的播放器）
+  // 媒体事件不冒泡，capture 监听可捕获；5s 轮询负责变化检测（SPA 动态创建的播放器）
   ['play', 'pause', 'ended', 'emptied', 'loadeddata'].forEach(ev =>
     document.addEventListener(ev, report, true),
   );
+  // 播放期间无条件 20s 心跳：持续唤醒 SW，让结算增量始终远小于 90s 截断线
+  //（系统空闲时 Chrome 会大幅延迟 alarm，若只靠 alarm 结算会按封顶丢一半时间）
+  setInterval(() => {
+    if (anyPlaying()) send(true);
+  }, 20000);
   setInterval(report, 5000);
   report();
+  console.debug('[media-watcher] loaded, playing =', anyPlaying());
 })();
