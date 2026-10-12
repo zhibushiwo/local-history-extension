@@ -28,6 +28,14 @@
     return playing;
   }
 
+  // 无副作用地判断"当前是否已在播"（不更新 lastTime）——仅供加载时唤醒轮询用
+  function currentlyPlaying() {
+    for (const m of document.querySelectorAll('video, audio')) {
+      if (!m.muted && !m.paused && !m.ended && m.currentTime > 0) return true;
+    }
+    return false;
+  }
+
   function send(playing) {
     try {
       chrome.runtime.sendMessage({ type: 'MEDIA_STATE', playing }).catch(() => {});
@@ -70,7 +78,9 @@
   ['play', 'playing', 'pause', 'ended', 'emptied', 'loadeddata', 'volumechange'].forEach(
     ev => document.addEventListener(ev, schedule, true),
   );
-  // 页面加载时已有在播媒体（恢复标签/刷新）→ 直接进入轮询
-  if (anyPlaying()) schedule();
+  // 页面加载时已有在播媒体（恢复标签/刷新）→ 进入轮询。
+  // 用无副作用的 currentlyPlaying：若先用 anyPlaying，会把 currentTime 前进量消耗掉，
+  // 首次 tickFn 随即判为未播，导致首个播放信号晚 ~5s。
+  if (currentlyPlaying()) schedule();
   console.debug('[media-watcher] loaded');
 })();

@@ -55,12 +55,25 @@ const dwell = createDwellController({
   log: (...args) => console.warn('[dwell]', ...args),
   async getDwellTargets(now) {
     try {
-      const wins = await chrome.windows.getAll({ populate: true });
+      // 只取各窗口的活动标签（每个窗口一个），避免 getAll({populate}) 拉取全部标签
+      const [activeTabs, wins] = await Promise.all([
+        chrome.tabs.query({ active: true }),
+        chrome.windows.getAll(),
+      ]);
+      const winById = new Map(wins.map((w) => [w.id, w]));
+      const shaped = [];
+      for (const tab of activeTabs) {
+        const win = winById.get(tab.windowId);
+        if (!win) continue;
+        // 组装成 collectDwellTargets 期望的窗口结构（每个窗口仅带其活动标签）
+        shaped.push({ type: win.type, state: win.state, focused: win.focused, tabs: [tab] });
+      }
       const playing = new Set();
       for (const [k, ts] of mediaPlayingAt) {
         if (now - ts < MEDIA_PLAYING_TTL_MS) playing.add(Number(k.split(':')[0]));
+        else mediaPlayingAt.delete(k); // 惰性清理过期帧条目（帧消失未必上报 false）
       }
-      return collectDwellTargets(wins, playing);
+      return collectDwellTargets(shaped, playing);
     } catch (e) {
       return []; // 枚举失败退化为不计时
     }
