@@ -38,6 +38,20 @@ const dwell = createDwellController({
   addDwellTime: (storeName, recordId, seconds, dayKey) =>
     MyHistoryDB.addDwellTime(storeName, recordId, seconds, dayKey),
   locateRecord,
+  async syncAlarm(active) {
+    // 心跳只在计时期间存在；alarm 在 SW 终止后依然存活，自愈式增删
+    try {
+      const exists = await new Promise((resolve) => {
+        try {
+          chrome.alarms.get(DWELL_ALARM, (a) => resolve(!!a));
+        } catch (e) {
+          resolve(false);
+        }
+      });
+      if (active && !exists) chrome.alarms.create(DWELL_ALARM, { periodInMinutes: 1 });
+      else if (!active && exists) chrome.alarms.clear(DWELL_ALARM);
+    } catch (e) {}
+  },
   log: (...args) => console.warn('[dwell]', ...args),
   async getDwellTargets(now) {
     try {
